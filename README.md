@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="art/banner.png" alt="Serpentine - Eat. Grow. Survive." width="100%" />
+  <img src="art/banner.png" alt="Serpentine - Grow. Evolve. Dominate." width="100%" />
 </p>
 
 <h1 align="center">🐍 SERPENTINE</h1>

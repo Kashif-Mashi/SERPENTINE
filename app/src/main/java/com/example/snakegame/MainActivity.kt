@@ -69,7 +69,7 @@ import kotlin.random.Random
 
 // Also change app_name in res/values/strings.xml so the launcher label matches.
 const val APP_NAME = "Serpentine"
-const val APP_TAGLINE = "Eat. Grow. Survive."
+const val APP_TAGLINE = "Grow. Evolve. Dominate."
 
 // ==========================================
 // 1. DATA MODELS & ENUMS
