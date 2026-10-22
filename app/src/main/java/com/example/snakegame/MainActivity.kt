@@ -12,6 +12,8 @@ import android.os.VibratorManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.core.content.edit
+import kotlin.time.Duration.Companion.milliseconds
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
@@ -22,6 +24,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -41,6 +44,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -49,6 +54,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -139,6 +145,7 @@ enum class Difficulty(
     HARD("Insane", 115L, 45L, 5L, 4)
 }
 
+@Suppress("SpellCheckingInspection")
 enum class GameTheme(
     val themeName: String,
     val background: Color,
@@ -152,67 +159,77 @@ enum class GameTheme(
     val obstacleGlow: Color,
     val primaryUi: Color,
     val surfaceUi: Color,
-    val textPrimary: Color
+    val textPrimary: Color,
+    val checkerLight: Color,
+    val checkerDark: Color
 ) {
-    CYBERPUNK(
-        themeName = "Cyberpunk",
-        background = Color(0xFF0A0717),
-        gridLine = Color(0x1800FFFF),
-        snakeHead = Color(0xFFFF007F),
-        snakeBody = Color(0xFF00F0FF),
-        normalFood = Color(0xFFFF2A6D),
-        goldenFood = Color(0xFFFFD700),
-        speedFood = Color(0xFF05FFA1),
-        obstacle = Color(0xFF7928CA),
-        obstacleGlow = Color(0x4D7928CA),
-        primaryUi = Color(0xFF00F0FF),
-        surfaceUi = Color(0xFF140E2D),
-        textPrimary = Color(0xFFE2F3F5)
+    MATRIX_NEON(
+        themeName = "Matrix Neon",
+        background = Color(0xFF071A12),
+        gridLine = Color(0x2240DF88),
+        snakeHead = Color(0xFF40DF88),
+        snakeBody = Color(0xFF26B265),
+        normalFood = Color(0xFFFF3355),
+        goldenFood = Color(0xFFFFD129),
+        speedFood = Color(0xFF00E5FF),
+        obstacle = Color(0xFF5A6660),
+        obstacleGlow = Color(0x3340DF88),
+        primaryUi = Color(0xFF40DF88),
+        surfaceUi = Color(0xFF0E271B),
+        textPrimary = Color(0xFFD8F3DC),
+        checkerLight = Color(0xFF1B4D36),
+        checkerDark = Color(0xFF133C29)
     ),
-    RETRO_GREEN(
-        themeName = "Retro LCD",
+    CYBERPUNK_PINK(
+        themeName = "Cyberpunk Pink",
+        background = Color(0xFF180A20),
+        gridLine = Color(0x22FF2A7A),
+        snakeHead = Color(0xFFFF2A8D),
+        snakeBody = Color(0xFFCC1F70),
+        normalFood = Color(0xFFFF3355),
+        goldenFood = Color(0xFFFFD129),
+        speedFood = Color(0xFF00F0FF),
+        obstacle = Color(0xFF563566),
+        obstacleGlow = Color(0x33FF2A8D),
+        primaryUi = Color(0xFFFF2A8D),
+        surfaceUi = Color(0xFF281236),
+        textPrimary = Color(0xFFFFE0F0),
+        checkerLight = Color(0xFF421550),
+        checkerDark = Color(0xFF330E3F)
+    ),
+    RETRO_GAMEBOY(
+        themeName = "Retro GameBoy",
         background = Color(0xFF8B956D),
-        gridLine = Color(0x1F222B1E),
+        gridLine = Color(0x202B331F),
         snakeHead = Color(0xFF1F2417),
         snakeBody = Color(0xFF38402A),
         normalFood = Color(0xFF1F2417),
         goldenFood = Color(0xFF4C5B32),
         speedFood = Color(0xFF38402A),
-        obstacle = Color(0xFF15190F),
-        obstacleGlow = Color(0x3315190F),
+        obstacle = Color(0xFF2E3622),
+        obstacleGlow = Color(0x221F2417),
         primaryUi = Color(0xFF1F2417),
         surfaceUi = Color(0xFF7E8A60),
-        textPrimary = Color(0xFF1F2417)
+        textPrimary = Color(0xFF1F2417),
+        checkerLight = Color(0xFF98A377),
+        checkerDark = Color(0xFF8B956D)
     ),
-    NEON_SUNSET(
-        themeName = "Neon Sunset",
-        background = Color(0xFF160628),
-        gridLine = Color(0x20FF5E7E),
-        snakeHead = Color(0xFFFF3366),
-        snakeBody = Color(0xFFFF9900),
-        normalFood = Color(0xFFFF0055),
-        goldenFood = Color(0xFFFFEE55),
-        speedFood = Color(0xFF00F5D4),
-        obstacle = Color(0xFF9B5DE5),
-        obstacleGlow = Color(0x4D9B5DE5),
-        primaryUi = Color(0xFFFF5E7E),
-        surfaceUi = Color(0xFF280B45),
-        textPrimary = Color(0xFFFFF0F5)
-    ),
-    MATRIX(
-        themeName = "Matrix",
-        background = Color(0xFF040C06),
-        gridLine = Color(0x1600FF66),
-        snakeHead = Color(0xFF00FF66),
-        snakeBody = Color(0xFF009933),
-        normalFood = Color(0xFF66FF99),
-        goldenFood = Color(0xFFFFFF33),
-        speedFood = Color(0xFF00E5FF),
-        obstacle = Color(0xFF004D1A),
-        obstacleGlow = Color(0x3300FF66),
-        primaryUi = Color(0xFF00FF66),
-        surfaceUi = Color(0xFF0A1C0E),
-        textPrimary = Color(0xFFD4FFDD)
+    MIDNIGHT_BLUE(
+        themeName = "Midnight Blue",
+        background = Color(0xFF071426),
+        gridLine = Color(0x2200D4FF),
+        snakeHead = Color(0xFF00D4FF),
+        snakeBody = Color(0xFF0090D9),
+        normalFood = Color(0xFFFF3355),
+        goldenFood = Color(0xFFFFD129),
+        speedFood = Color(0xFF00FFA3),
+        obstacle = Color(0xFF324B6B),
+        obstacleGlow = Color(0x3300D4FF),
+        primaryUi = Color(0xFF00D4FF),
+        surfaceUi = Color(0xFF0F223D),
+        textPrimary = Color(0xFFDDF5FF),
+        checkerLight = Color(0xFF103358),
+        checkerDark = Color(0xFF0B2644)
     )
 }
 
@@ -258,7 +275,7 @@ fun SnakeGameApp(isForeground: Boolean) {
 
     // Game Core State
     var gameState by remember { mutableStateOf(GameState.MENU) }
-    var currentTheme by remember { mutableStateOf(GameTheme.CYBERPUNK) }
+    var currentTheme by remember { mutableStateOf(GameTheme.MATRIX_NEON) }
     var currentDifficulty by remember { mutableStateOf(Difficulty.MEDIUM) }
     var wrapAroundWalls by remember { mutableStateOf(false) }
 
@@ -269,7 +286,8 @@ fun SnakeGameApp(isForeground: Boolean) {
     // Persistent Settings
     var vibrationEnabled by remember { mutableStateOf(prefs.getBoolean("vibration", true)) }
     var musicEnabled by remember { mutableStateOf(prefs.getBoolean("music_on", true)) }
-    var musicVolume by remember { mutableFloatStateOf(prefs.getFloat("music_volume", 0.5f)) }
+    var musicVolume by remember { mutableFloatStateOf(prefs.getFloat("music_volume", 0.6f)) }
+    var swipeSensitivity by remember { mutableFloatStateOf(prefs.getFloat("swipe_sensitivity", 0.65f)) }
 
     // Score Tracking
     var score by remember { mutableIntStateOf(0) }
@@ -383,7 +401,7 @@ fun SnakeGameApp(isForeground: Boolean) {
 
     // Helper: Spawn Explosion Particles
     fun spawnParticles(gx: Int, gy: Int, color: Color, count: Int = 16) {
-        for (i in 0 until count) {
+        repeat(count) {
             val angle = Random.nextFloat() * 2 * Math.PI.toFloat()
             val speed = Random.nextFloat() * 6f + 2f
             particles.add(
@@ -430,7 +448,7 @@ fun SnakeGameApp(isForeground: Boolean) {
         splashProgress.animateTo(0.7f, tween(900, easing = LinearEasing))
         prepJob.join()
         splashProgress.animateTo(1f, tween(500, easing = FastOutSlowInEasing))
-        delay(150)
+        delay(150.milliseconds)
         showSplash = false
     }
 
@@ -455,7 +473,7 @@ fun SnakeGameApp(isForeground: Boolean) {
         }
     }
 
-    // Back button behaviour
+    // Back button behavior
     BackHandler(enabled = !showSplash && (showSettings || gameState != GameState.MENU)) {
         when {
             showSettings -> showSettings = false
@@ -508,7 +526,7 @@ fun SnakeGameApp(isForeground: Boolean) {
                 .coerceAtLeast(currentDifficulty.minDelayMs)
             val effectiveDelay = if (isBoosted) (computedDelay * 0.72f).toLong() else computedDelay
 
-            delay(effectiveDelay)
+            delay(effectiveDelay.milliseconds)
 
             // Step 1: Direction from Queue
             if (directionQueue.isNotEmpty()) {
@@ -559,7 +577,7 @@ fun SnakeGameApp(isForeground: Boolean) {
                 score += pointsEarned
                 if (score > highScore) {
                     highScore = score
-                    prefs.edit().putInt("high_score", highScore).apply()
+                    prefs.edit { putInt("high_score", highScore) }
                 }
 
                 val foodColor = when (currentFood.type) {
@@ -679,7 +697,7 @@ fun SnakeGameApp(isForeground: Boolean) {
                                         change.consume()
                                         accumulatedDragX += dragAmount.x
                                         accumulatedDragY += dragAmount.y
-                                        val swipeThreshold = 28f
+                                        val swipeThreshold = 52f - (swipeSensitivity.coerceIn(0.1f, 1f) * 36f)
                                         if (abs(accumulatedDragX) > swipeThreshold || abs(accumulatedDragY) > swipeThreshold) {
                                             if (abs(accumulatedDragX) > abs(accumulatedDragY)) {
                                                 if (accumulatedDragX > 0) queueDirection(Direction.RIGHT)
@@ -702,7 +720,17 @@ fun SnakeGameApp(isForeground: Boolean) {
                             val cellWidth = size.width / gridWidth
                             val cellHeight = size.height / gridHeight
 
-                            // 1. Draw Grid Lines
+                            // 1. Draw Two-Tone Checkerboard Grid
+                            for (x in 0 until gridWidth) {
+                                for (y in 0 until gridHeight) {
+                                    val isEven = (x + y) % 2 == 0
+                                    drawRect(
+                                        color = if (isEven) currentTheme.checkerLight else currentTheme.checkerDark,
+                                        topLeft = Offset(x * cellWidth, y * cellHeight),
+                                        size = Size(cellWidth, cellHeight)
+                                    )
+                                }
+                            }
                             for (x in 0..gridWidth) {
                                 drawLine(
                                     color = currentTheme.gridLine,
@@ -721,9 +749,9 @@ fun SnakeGameApp(isForeground: Boolean) {
                             }
 
                             // 2. Draw Obstacles
-                            for (obs in obstacles) {
-                                val left = obs.x * cellWidth
-                                val top = obs.y * cellHeight
+                            for ((ox, oy) in obstacles) {
+                                val left = ox * cellWidth
+                                val top = oy * cellHeight
 
                                 // Outer Glow
                                 drawRoundRect(
@@ -829,7 +857,7 @@ fun SnakeGameApp(isForeground: Boolean) {
 
                                 if (index == 0) {
                                     // Soft head glow (skipped on the light Retro LCD theme)
-                                    if (currentTheme != GameTheme.RETRO_GREEN) {
+                                    if (currentTheme != GameTheme.RETRO_GAMEBOY) {
                                         drawCircle(
                                             color = currentTheme.snakeHead.copy(alpha = 0.22f),
                                             radius = cellWidth * 0.95f,
@@ -886,25 +914,25 @@ fun SnakeGameApp(isForeground: Boolean) {
                             }
 
                             // 5. Draw Particles
-                            for (p in particles) {
+                            for ((px, py, _, _, pColor, pAlpha, pRadius) in particles) {
                                 drawCircle(
-                                    color = p.color.copy(alpha = p.alpha.coerceIn(0f, 1f)),
-                                    radius = p.radius,
-                                    center = Offset(p.x * cellWidth + cellWidth / 2, p.y * cellHeight + cellHeight / 2)
+                                    color = pColor.copy(alpha = pAlpha.coerceIn(0f, 1f)),
+                                    radius = pRadius,
+                                    center = Offset(px * cellWidth + cellWidth / 2, py * cellHeight + cellHeight / 2)
                                 )
                             }
 
                             // 6. Draw Floating Score Text
-                            for (ft in floatingTexts) {
+                            for ((fText, fGridX, fGridY, fColor, fOffsetY, fAlpha) in floatingTexts) {
                                 drawText(
                                     textMeasurer = textMeasurer,
-                                    text = ft.text,
+                                    text = fText,
                                     topLeft = Offset(
-                                        x = ft.gridX * cellWidth + cellWidth * 0.15f,
-                                        y = (ft.gridY + ft.offsetY) * cellHeight
+                                        x = fGridX * cellWidth + cellWidth * 0.15f,
+                                        y = (fGridY + fOffsetY) * cellHeight
                                     ),
                                     style = TextStyle(
-                                        color = ft.color.copy(alpha = ft.alpha.coerceIn(0f, 1f)),
+                                        color = fColor.copy(alpha = fAlpha.coerceIn(0f, 1f)),
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Black
                                     )
@@ -982,18 +1010,23 @@ fun SnakeGameApp(isForeground: Boolean) {
                     vibrationEnabled = vibrationEnabled,
                     musicEnabled = musicEnabled,
                     musicVolume = musicVolume,
+                    swipeSensitivity = swipeSensitivity,
                     onVibrationChange = {
                         vibrationEnabled = it
-                        prefs.edit().putBoolean("vibration", it).apply()
+                        prefs.edit { putBoolean("vibration", it) }
                         if (it) performHaptic(context, HapticType.MEDIUM) // let the user feel it
                     },
                     onMusicChange = {
                         musicEnabled = it
-                        prefs.edit().putBoolean("music_on", it).apply()
+                        prefs.edit { putBoolean("music_on", it) }
                     },
                     onVolumeChange = { musicVolume = it },
                     onVolumeChangeFinished = {
-                        prefs.edit().putFloat("music_volume", musicVolume).apply()
+                        prefs.edit { putFloat("music_volume", musicVolume) }
+                    },
+                    onSwipeSensitivityChange = { swipeSensitivity = it },
+                    onSwipeSensitivityChangeFinished = {
+                        prefs.edit { putFloat("swipe_sensitivity", swipeSensitivity) }
                     },
                     onClose = { showSettings = false }
                 )
@@ -1331,213 +1364,546 @@ fun MenuOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.86f))
-            .padding(18.dp),
-        contentAlignment = Alignment.Center
+            .background(theme.background)
     ) {
-        Card(
+        // Decorative pixel matrix in top-left and top-right corners
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val pixelGreen = theme.primaryUi.copy(alpha = 0.35f)
+            val pSize = 10.dp.toPx()
+            // Top Left pixels
+            drawRect(pixelGreen, topLeft = Offset(24.dp.toPx(), 36.dp.toPx()), size = Size(pSize, pSize))
+            drawRect(pixelGreen, topLeft = Offset(38.dp.toPx(), 36.dp.toPx()), size = Size(pSize, pSize))
+            drawRect(pixelGreen, topLeft = Offset(24.dp.toPx(), 50.dp.toPx()), size = Size(pSize, pSize))
+            drawRect(pixelGreen, topLeft = Offset(38.dp.toPx(), 64.dp.toPx()), size = Size(pSize, pSize))
+
+            // Top Right pixels
+            val rightX = size.width - 48.dp.toPx()
+            drawRect(pixelGreen, topLeft = Offset(rightX, 36.dp.toPx()), size = Size(pSize, pSize))
+            drawRect(pixelGreen, topLeft = Offset(rightX + 14.dp.toPx(), 36.dp.toPx()), size = Size(pSize, pSize))
+            drawRect(pixelGreen, topLeft = Offset(rightX + 14.dp.toPx(), 50.dp.toPx()), size = Size(pSize, pSize))
+        }
+
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = theme.surfaceUi),
-            border = BorderStroke(2.dp, theme.primaryUi.copy(alpha = 0.7f)),
-            elevation = CardDefaults.cardElevation(12.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 1. Cute Snake S Logo
+            SnakeSLogo(modifier = Modifier.size(58.dp), theme = theme)
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Title
+            Text(
+                text = APP_NAME.uppercase(),
+                color = theme.textPrimary,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Pill: Best Score
+            Surface(
+                shape = CircleShape,
+                color = theme.surfaceUi.copy(alpha = 0.6f),
+                border = BorderStroke(1.5.dp, theme.primaryUi.copy(alpha = 0.8f))
+            ) {
+                Text(
+                    text = "Best $highScore",
+                    color = theme.primaryUi,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 2. Decorative Center Checkerboard Board
+            DecorativeCheckerboardCard(
+                theme = theme,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .aspectRatio(1.05f)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 3. Difficulty Selector
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Game Title
+                // Bar Chart Icon
+                Canvas(modifier = Modifier.size(16.dp)) {
+                    val w = size.width / 5f
+                    val c = theme.primaryUi
+                    drawRoundRect(c, topLeft = Offset(0f, size.height * 0.6f), size = Size(w, size.height * 0.4f), cornerRadius = CornerRadius(2f, 2f))
+                    drawRoundRect(c, topLeft = Offset(w * 1.5f, size.height * 0.35f), size = Size(w, size.height * 0.65f), cornerRadius = CornerRadius(2f, 2f))
+                    drawRoundRect(c, topLeft = Offset(w * 3f, 0f), size = Size(w, size.height), cornerRadius = CornerRadius(2f, 2f))
+                }
                 Text(
-                    text = APP_NAME.uppercase(),
-                    color = theme.primaryUi,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 3.sp
+                    text = "Difficulty",
+                    color = theme.textPrimary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = "High Score: $highScore",
-                    color = theme.goldenFood,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+            }
 
-                Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-                // Difficulty Selector
-                Text(
-                    text = "SELECT DIFFICULTY",
-                    color = theme.textPrimary.copy(alpha = 0.7f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Difficulty.values().forEach { diff ->
-                        val isSelected = diff == selectedDifficulty
-                        Button(
-                            modifier = Modifier.weight(1f),
-                            onClick = { onDifficultySelected(diff) },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSelected) theme.primaryUi else theme.surfaceUi.copy(alpha = 0.5f)
-                            ),
-                            border = BorderStroke(
-                                1.dp,
-                                if (isSelected) theme.primaryUi else theme.primaryUi.copy(alpha = 0.3f)
-                            ),
-                            contentPadding = PaddingValues(vertical = 8.dp)
-                        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Difficulty.entries.forEach { diff ->
+                    val isSelected = diff == selectedDifficulty
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .clickable { onDifficultySelected(diff) },
+                        shape = RoundedCornerShape(21.dp),
+                        color = if (isSelected) theme.primaryUi else theme.surfaceUi.copy(alpha = 0.6f),
+                        border = if (isSelected) null else BorderStroke(1.dp, theme.textPrimary.copy(alpha = 0.12f))
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text = diff.displayName,
-                                color = if (isSelected) theme.background else theme.textPrimary,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1
+                                color = if (isSelected) Color(0xFF061A0E) else theme.textPrimary.copy(alpha = 0.8f),
+                                fontSize = 13.sp,
+                                fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold
                             )
                         }
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                // Theme Selector (2 x 2 grid with colour swatches)
+            // 4. Theme Selector
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Palette Icon
+                Canvas(modifier = Modifier.size(16.dp)) {
+                    drawCircle(color = theme.primaryUi, radius = size.width / 2f)
+                    drawCircle(color = theme.background, radius = size.width * 0.18f, center = Offset(size.width * 0.32f, size.height * 0.35f))
+                    drawCircle(color = theme.background, radius = size.width * 0.15f, center = Offset(size.width * 0.68f, size.height * 0.35f))
+                    drawCircle(color = theme.background, radius = size.width * 0.15f, center = Offset(size.width * 0.45f, size.height * 0.72f))
+                }
                 Text(
-                    text = "VISUAL THEME",
-                    color = theme.textPrimary.copy(alpha = 0.7f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
+                    text = "Theme",
+                    color = theme.textPrimary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                GameTheme.values().toList().chunked(2).forEach { rowThemes ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        rowThemes.forEach { t ->
-                            ThemeChip(
-                                chipTheme = t,
-                                isSelected = t == selectedTheme,
-                                accent = theme.primaryUi,
-                                modifier = Modifier.weight(1f),
-                                onClick = { onThemeSelected(t) }
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                GameTheme.entries.forEach { t ->
+                    ThemeSwatchTile(
+                        tileTheme = t,
+                        isSelected = t == selectedTheme,
+                        accentColor = theme.primaryUi,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onThemeSelected(t) }
+                    )
                 }
+            }
 
-                Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-                // Wrap-Around Walls Setting
+            // 5. Portal Walls Row
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                color = theme.surfaceUi.copy(alpha = 0.65f),
+                border = BorderStroke(1.dp, theme.textPrimary.copy(alpha = 0.1f))
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Canvas(modifier = Modifier.size(18.dp)) {
+                            drawRoundRect(
+                                color = theme.primaryUi,
+                                style = Stroke(width = 2.dp.toPx()),
+                                cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                            )
+                            drawLine(
+                                color = theme.primaryUi,
+                                start = Offset(size.width * 0.35f, size.height * 0.25f),
+                                end = Offset(size.width * 0.65f, size.height * 0.75f),
+                                strokeWidth = 1.5.dp.toPx()
+                            )
+                        }
                         Text(
-                            text = "Portal Walls (Wrap Around)",
+                            text = "Portal Walls",
                             color = theme.textPrimary,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = if (wrapAroundWalls) "Snake passes through borders" else "Borders are fatal",
-                            color = theme.textPrimary.copy(alpha = 0.5f),
-                            fontSize = 11.sp
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                     Switch(
                         checked = wrapAroundWalls,
-                        onCheckedChange = { onWrapToggle(it) },
+                        onCheckedChange = onWrapToggle,
                         colors = themedSwitchColors(theme)
                     )
                 }
+            }
 
-                Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                // Play Button
+            // 6. Action Bar: Big PLAY button + Settings Gear
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 Button(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
                     onClick = onStartGame,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = theme.primaryUi),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(54.dp),
+                    shape = RoundedCornerShape(27.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = theme.primaryUi
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
                 ) {
                     Text(
-                        text = "START MISSION",
-                        color = theme.background,
-                        fontSize = 16.sp,
+                        text = "PLAY",
+                        color = Color(0xFF071F11),
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp
+                        letterSpacing = 2.sp
                     )
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
-
-                TextButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onOpenSettings
+                Surface(
+                    onClick = onOpenSettings,
+                    modifier = Modifier.size(54.dp),
+                    shape = CircleShape,
+                    color = theme.surfaceUi,
+                    border = BorderStroke(1.dp, theme.textPrimary.copy(alpha = 0.15f)),
+                    shadowElevation = 4.dp
                 ) {
-                    Text(
-                        text = "⚙  SETTINGS  (sound & vibration)",
-                        color = theme.textPrimary.copy(alpha = 0.8f),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "⚙",
+                            color = theme.textPrimary,
+                            fontSize = 22.sp
+                        )
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
         }
     }
 }
 
 @Composable
-fun ThemeChip(
-    chipTheme: GameTheme,
-    isSelected: Boolean,
-    accent: Color,
-    modifier: Modifier,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier.height(44.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = chipTheme.background,
-        border = BorderStroke(
-            width = if (isSelected) 2.5.dp else 1.dp,
-            color = if (isSelected) accent else Color.Gray.copy(alpha = 0.4f)
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Box(Modifier.size(12.dp).background(chipTheme.snakeHead, CircleShape))
-            Box(Modifier.size(12.dp).background(chipTheme.snakeBody, CircleShape))
-            Text(
-                text = chipTheme.themeName,
-                color = chipTheme.primaryUi,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1
+fun SnakeSLogo(modifier: Modifier = Modifier, theme: GameTheme) {
+    Canvas(modifier = modifier) {
+        val strokeW = size.width * 0.18f
+        val bodyColor = theme.snakeHead
+
+        // Draw 'S' curve
+        val sPath = Path().apply {
+            moveTo(size.width * 0.72f, size.height * 0.28f)
+            cubicTo(
+                size.width * 0.7f, size.height * 0.08f,
+                size.width * 0.3f, size.height * 0.08f,
+                size.width * 0.3f, size.height * 0.32f
+            )
+            cubicTo(
+                size.width * 0.3f, size.height * 0.52f,
+                size.width * 0.72f, size.height * 0.54f,
+                size.width * 0.72f, size.height * 0.75f
+            )
+            cubicTo(
+                size.width * 0.72f, size.height * 0.95f,
+                size.width * 0.26f, size.height * 0.95f,
+                size.width * 0.22f, size.height * 0.76f
             )
         }
+        drawPath(
+            path = sPath,
+            color = bodyColor,
+            style = Stroke(width = strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        )
+
+        // Cute Tongue
+        val tonguePath = Path().apply {
+            moveTo(size.width * 0.78f, size.height * 0.28f)
+            lineTo(size.width * 0.92f, size.height * 0.26f)
+            lineTo(size.width * 0.98f, size.height * 0.22f)
+            moveTo(size.width * 0.92f, size.height * 0.26f)
+            lineTo(size.width * 0.98f, size.height * 0.30f)
+        }
+        drawPath(
+            path = tonguePath,
+            color = Color(0xFFFF3355),
+            style = Stroke(width = strokeW * 0.22f, cap = StrokeCap.Round)
+        )
+
+        // Eyes on the head
+        val eyeRadius = size.width * 0.09f
+        val pupilRadius = eyeRadius * 0.5f
+
+        val eye1Center = Offset(size.width * 0.58f, size.height * 0.22f)
+        val eye2Center = Offset(size.width * 0.72f, size.height * 0.22f)
+
+        // Eye whites
+        drawCircle(Color.White, radius = eyeRadius, center = eye1Center)
+        drawCircle(Color.White, radius = eyeRadius, center = eye2Center)
+
+        // Eye pupils
+        drawCircle(Color.Black, radius = pupilRadius, center = Offset(eye1Center.x + pupilRadius * 0.3f, eye1Center.y))
+        drawCircle(Color.Black, radius = pupilRadius, center = Offset(eye2Center.x + pupilRadius * 0.3f, eye2Center.y))
+    }
+}
+
+@Composable
+fun DecorativeCheckerboardCard(theme: GameTheme, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = theme.surfaceUi),
+        border = BorderStroke(2.5.dp, theme.surfaceUi.copy(alpha = 0.9f)),
+        elevation = CardDefaults.cardElevation(8.dp)
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val cols = 8
+            val rows = 8
+            val cellW = size.width / cols
+            val cellH = size.height / rows
+
+            // 1. Two-Tone Checkerboard
+            for (c in 0 until cols) {
+                for (r in 0 until rows) {
+                    val isEven = (c + r) % 2 == 0
+                    drawRect(
+                        color = if (isEven) theme.checkerLight else theme.checkerDark,
+                        topLeft = Offset(c * cellW, r * cellH),
+                        size = Size(cellW, cellH)
+                    )
+                }
+            }
+
+            // 2. Obstacle rounded stones
+            val stoneColor = Color(0xFF75857E)
+            val stoneHighlight = Color(0xFF94A39D)
+            fun drawStone(cx: Float, cy: Float, rad: Float) {
+                drawRoundRect(
+                    color = stoneColor,
+                    topLeft = Offset(cx - rad, cy - rad * 0.8f),
+                    size = Size(rad * 2f, rad * 1.6f),
+                    cornerRadius = CornerRadius(rad * 0.8f, rad * 0.8f)
+                )
+                drawCircle(
+                    color = stoneHighlight.copy(alpha = 0.6f),
+                    radius = rad * 0.35f,
+                    center = Offset(cx - rad * 0.35f, cy - rad * 0.25f)
+                )
+            }
+            drawStone(cellW * 1.5f, cellH * 1.8f, cellW * 0.42f)
+            drawStone(cellW * 6.5f, cellH * 4.8f, cellW * 0.45f)
+            drawStone(cellW * 5.0f, cellH * 6.8f, cellW * 0.44f)
+
+            // 3. Smooth Curved Snake Body
+            val snakePath = Path().apply {
+                moveTo(cellW * 1.8f, cellH * 6.2f)
+                cubicTo(
+                    cellW * 1.8f, cellH * 5.0f,
+                    cellW * 2.8f, cellH * 4.9f,
+                    cellW * 3.5f, cellH * 4.9f
+                )
+                cubicTo(
+                    cellW * 4.2f, cellH * 4.9f,
+                    cellW * 4.2f, cellH * 3.7f,
+                    cellW * 4.2f, cellH * 3.2f
+                )
+                cubicTo(
+                    cellW * 4.2f, cellH * 2.7f,
+                    cellW * 4.6f, cellH * 2.7f,
+                    cellW * 5.4f, cellH * 2.7f
+                )
+            }
+            // Outline / Shadow
+            drawPath(
+                path = snakePath,
+                color = theme.snakeBody.copy(alpha = 0.4f),
+                style = Stroke(width = cellW * 0.74f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+            // Body Fill
+            drawPath(
+                path = snakePath,
+                color = theme.snakeHead,
+                style = Stroke(width = cellW * 0.62f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+            // Soft Top Highlight
+            drawPath(
+                path = snakePath,
+                color = Color.White.copy(alpha = 0.22f),
+                style = Stroke(width = cellW * 0.22f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+
+            // Snake Head Eyes (on cell 5.4, 2.7)
+            val headX = cellW * 5.4f
+            val headY = cellH * 2.7f
+            val eyeRad = cellW * 0.16f
+            val pupilRad = eyeRad * 0.55f
+
+            val e1 = Offset(headX - eyeRad * 0.4f, headY - eyeRad * 0.5f)
+            val e2 = Offset(headX + eyeRad * 0.8f, headY - eyeRad * 0.5f)
+
+            drawCircle(Color.White, radius = eyeRad, center = e1)
+            drawCircle(Color.White, radius = eyeRad, center = e2)
+            drawCircle(Color.Black, radius = pupilRad, center = Offset(e1.x + pupilRad * 0.4f, e1.y))
+            drawCircle(Color.Black, radius = pupilRad, center = Offset(e2.x + pupilRad * 0.4f, e2.y))
+
+            // Cute smiling mouth
+            drawArc(
+                color = Color(0xFF0F3B20),
+                startAngle = 10f,
+                sweepAngle = 140f,
+                useCenter = false,
+                topLeft = Offset(headX + eyeRad * 0.2f, headY + eyeRad * 0.2f),
+                size = Size(eyeRad * 1.4f, eyeRad * 0.8f),
+                style = Stroke(width = 2.5f, cap = StrokeCap.Round)
+            )
+
+            // 4. Glossy Apple with Leaf & Sparkles
+            val appleX = cellW * 6.8f
+            val appleY = cellH * 2.8f
+            val appleR = cellW * 0.45f
+
+            // Apple Body
+            drawCircle(Color(0xFFFF2A4D), radius = appleR, center = Offset(appleX, appleY))
+            // Apple highlight
+            drawCircle(Color.White.copy(alpha = 0.65f), radius = appleR * 0.32f, center = Offset(appleX - appleR * 0.35f, appleY - appleR * 0.35f))
+
+            // Apple Leaf
+            val leafPath = Path().apply {
+                moveTo(appleX, appleY - appleR * 0.9f)
+                quadraticTo(
+                    appleX + appleR * 0.5f, appleY - appleR * 1.5f,
+                    appleX + appleR * 0.7f, appleY - appleR * 1.1f
+                )
+                quadraticTo(
+                    appleX + appleR * 0.3f, appleY - appleR * 0.8f,
+                    appleX, appleY - appleR * 0.9f
+                )
+            }
+            drawPath(leafPath, color = Color(0xFF40DF88), style = Fill)
+
+            // Sparkles around apple
+            fun drawSparkle(sx: Float, sy: Float, sSize: Float) {
+                val sp = Path().apply {
+                    moveTo(sx, sy - sSize)
+                    lineTo(sx + sSize * 0.25f, sy - sSize * 0.25f)
+                    lineTo(sx + sSize, sy)
+                    lineTo(sx + sSize * 0.25f, sy + sSize * 0.25f)
+                    lineTo(sx, sy + sSize)
+                    lineTo(sx - sSize * 0.25f, sy + sSize * 0.25f)
+                    lineTo(sx - sSize, sy)
+                    lineTo(sx - sSize * 0.25f, sy - sSize * 0.25f)
+                    close()
+                }
+                drawPath(sp, color = Color(0xFFFFD129), style = Fill)
+            }
+            drawSparkle(appleX - appleR * 1.1f, appleY - appleR * 0.7f, cellW * 0.16f)
+            drawSparkle(appleX + appleR * 1.0f, appleY - appleR * 0.9f, cellW * 0.14f)
+            drawSparkle(appleX + appleR * 1.1f, appleY + appleR * 0.6f, cellW * 0.15f)
+        }
+    }
+}
+
+@Composable
+fun ThemeSwatchTile(
+    tileTheme: GameTheme,
+    isSelected: Boolean,
+    accentColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = modifier.clickable { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f),
+            shape = RoundedCornerShape(16.dp),
+            color = tileTheme.background,
+            border = BorderStroke(
+                width = if (isSelected) 3.dp else 1.dp,
+                color = if (isSelected) accentColor else Color.White.copy(alpha = 0.15f)
+            ),
+            shadowElevation = if (isSelected) 6.dp else 2.dp
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val cells = 4
+                val cw = size.width / cells
+                val ch = size.height / cells
+                for (x in 0 until cells) {
+                    for (y in 0 until cells) {
+                        drawRect(
+                            color = if ((x + y) % 2 == 0) tileTheme.checkerLight else tileTheme.checkerDark,
+                            topLeft = Offset(x * cw, y * ch),
+                            size = Size(cw, ch)
+                        )
+                    }
+                }
+                // Mini snake in swatch
+                val sPath = Path().apply {
+                    moveTo(cw * 0.8f, ch * 2.8f)
+                    cubicTo(cw * 1.5f, ch * 1.2f, cw * 2.2f, ch * 2.8f, cw * 3.0f, ch * 1.5f)
+                }
+                drawPath(
+                    path = sPath,
+                    color = tileTheme.snakeHead,
+                    style = Stroke(width = cw * 0.7f, cap = StrokeCap.Round)
+                )
+                // Mini apple
+                drawCircle(tileTheme.normalFood, radius = cw * 0.42f, center = Offset(cw * 3.2f, ch * 1.2f))
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = tileTheme.themeName,
+            color = if (isSelected) accentColor else Color.White.copy(alpha = 0.7f),
+            fontSize = 10.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            lineHeight = 12.sp
+        )
     }
 }
 
@@ -1560,150 +1926,503 @@ fun SettingsOverlay(
     vibrationEnabled: Boolean,
     musicEnabled: Boolean,
     musicVolume: Float,
+    swipeSensitivity: Float,
     onVibrationChange: (Boolean) -> Unit,
     onMusicChange: (Boolean) -> Unit,
     onVolumeChange: (Float) -> Unit,
     onVolumeChangeFinished: () -> Unit,
+    onSwipeSensitivityChange: (Float) -> Unit,
+    onSwipeSensitivityChangeFinished: () -> Unit,
     onClose: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.88f))
+            .background(theme.background)
             .pointerInput(Unit) { detectTapGestures { } }
-            .padding(20.dp),
-        contentAlignment = Alignment.Center
     ) {
-        Card(
+        // Decorative pixel matrix in top-left and top-right corners (same as Menu)
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val pixelGreen = theme.primaryUi.copy(alpha = 0.35f)
+            val pSize = 10.dp.toPx()
+            // Top Left pixels
+            drawRect(pixelGreen, topLeft = Offset(24.dp.toPx(), 36.dp.toPx()), size = Size(pSize, pSize))
+            drawRect(pixelGreen, topLeft = Offset(38.dp.toPx(), 36.dp.toPx()), size = Size(pSize, pSize))
+            drawRect(pixelGreen, topLeft = Offset(24.dp.toPx(), 50.dp.toPx()), size = Size(pSize, pSize))
+            drawRect(pixelGreen, topLeft = Offset(38.dp.toPx(), 64.dp.toPx()), size = Size(pSize, pSize))
+
+            // Top Right pixels
+            val rightX = size.width - 48.dp.toPx()
+            drawRect(pixelGreen, topLeft = Offset(rightX, 36.dp.toPx()), size = Size(pSize, pSize))
+            drawRect(pixelGreen, topLeft = Offset(rightX + 14.dp.toPx(), 36.dp.toPx()), size = Size(pSize, pSize))
+            drawRect(pixelGreen, topLeft = Offset(rightX + 14.dp.toPx(), 50.dp.toPx()), size = Size(pSize, pSize))
+        }
+
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = theme.surfaceUi),
-            border = BorderStroke(2.dp, theme.primaryUi.copy(alpha = 0.7f)),
-            elevation = CardDefaults.cardElevation(12.dp)
+                .fillMaxSize()
+                .padding(horizontal = 22.dp, vertical = 26.dp)
         ) {
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 1. Top Header: Back Button + "Settings" Title
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clickable { onClose() },
+                    shape = CircleShape,
+                    color = theme.surfaceUi,
+                    border = BorderStroke(1.5.dp, theme.primaryUi.copy(alpha = 0.35f))
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Canvas(modifier = Modifier.size(22.dp)) {
+                            val strokeW = 3.dp.toPx()
+                            val c = theme.textPrimary
+                            val headX = size.width * 0.22f
+                            val tailX = size.width * 0.78f
+                            val midY = size.height * 0.5f
+
+                            // Main horizontal stem
+                            drawLine(
+                                color = c,
+                                start = Offset(headX, midY),
+                                end = Offset(tailX, midY),
+                                strokeWidth = strokeW,
+                                cap = StrokeCap.Round
+                            )
+                            // Top arrow wing
+                            drawLine(
+                                color = c,
+                                start = Offset(headX, midY),
+                                end = Offset(headX + size.width * 0.32f, midY - size.height * 0.32f),
+                                strokeWidth = strokeW,
+                                cap = StrokeCap.Round
+                            )
+                            // Bottom arrow wing
+                            drawLine(
+                                color = c,
+                                start = Offset(headX, midY),
+                                end = Offset(headX + size.width * 0.32f, midY + size.height * 0.32f),
+                                strokeWidth = strokeW,
+                                cap = StrokeCap.Round
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(18.dp))
+
+                Text(
+                    text = "Settings",
+                    color = theme.textPrimary,
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Settings Cards in Scrollable Column
             Column(
                 modifier = Modifier
+                    .weight(1f)
                     .fillMaxWidth()
-                    .padding(22.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "SETTINGS",
-                    color = theme.primaryUi,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 3.sp
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                SettingSwitchRow(
-                    title = "Vibration",
-                    subtitle = if (vibrationEnabled) "Haptics on eat and crash" else "Haptics off",
-                    checked = vibrationEnabled,
-                    theme = theme,
-                    onCheckedChange = onVibrationChange
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                SettingSwitchRow(
-                    title = "Background music",
-                    subtitle = if (musicEnabled) "Chiptune loop playing" else "Music off",
-                    checked = musicEnabled,
-                    theme = theme,
-                    onCheckedChange = onMusicChange
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
+                // Card 1: Vibration
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    shape = RoundedCornerShape(24.dp),
+                    color = theme.surfaceUi,
+                    border = BorderStroke(1.dp, theme.textPrimary.copy(alpha = 0.1f))
                 ) {
-                    Text(
-                        text = "Music volume",
-                        color = theme.textPrimary.copy(alpha = if (musicEnabled) 1f else 0.4f),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "${(musicVolume * 100).toInt()}%",
-                        color = theme.textPrimary.copy(alpha = if (musicEnabled) 0.7f else 0.3f),
-                        fontSize = 13.sp
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // Vibrating Phone Icon
+                            Canvas(modifier = Modifier.size(28.dp)) {
+                                val c = theme.textPrimary.copy(alpha = 0.9f)
+                                val strokeW = 2.dp.toPx()
+                                val pw = size.width * 0.44f
+                                val ph = size.height * 0.74f
+                                val px = (size.width - pw) / 2f
+                                val py = (size.height - ph) / 2f
+
+                                // Phone rectangle
+                                drawRoundRect(
+                                    color = c,
+                                    topLeft = Offset(px, py),
+                                    size = Size(pw, ph),
+                                    cornerRadius = CornerRadius(5.dp.toPx(), 5.dp.toPx()),
+                                    style = Stroke(width = strokeW)
+                                )
+                                // Speaker slot
+                                drawLine(
+                                    color = c,
+                                    start = Offset(px + pw * 0.32f, py + ph * 0.15f),
+                                    end = Offset(px + pw * 0.68f, py + ph * 0.15f),
+                                    strokeWidth = 1.5.dp.toPx(),
+                                    cap = StrokeCap.Round
+                                )
+                                // Home button dot
+                                drawCircle(
+                                    color = c,
+                                    radius = 1.5.dp.toPx(),
+                                    center = Offset(px + pw / 2f, py + ph * 0.85f)
+                                )
+                                // Left waves
+                                val waveL = Path().apply {
+                                    moveTo(px - 4.dp.toPx(), py + ph * 0.2f)
+                                    lineTo(px - 7.dp.toPx(), py + ph * 0.35f)
+                                    lineTo(px - 4.dp.toPx(), py + ph * 0.5f)
+                                    lineTo(px - 7.dp.toPx(), py + ph * 0.65f)
+                                    lineTo(px - 4.dp.toPx(), py + ph * 0.8f)
+                                }
+                                drawPath(waveL, color = c, style = Stroke(strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round))
+
+                                // Right waves
+                                val waveR = Path().apply {
+                                    moveTo(px + pw + 4.dp.toPx(), py + ph * 0.2f)
+                                    lineTo(px + pw + 7.dp.toPx(), py + ph * 0.35f)
+                                    lineTo(px + pw + 4.dp.toPx(), py + ph * 0.5f)
+                                    lineTo(px + pw + 7.dp.toPx(), py + ph * 0.65f)
+                                    lineTo(px + pw + 4.dp.toPx(), py + ph * 0.8f)
+                                }
+                                drawPath(waveR, color = c, style = Stroke(strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                            }
+
+                            Text(
+                                text = "Vibration",
+                                color = theme.textPrimary,
+                                fontSize = 19.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Switch(
+                            checked = vibrationEnabled,
+                            onCheckedChange = onVibrationChange,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = theme.primaryUi,
+                                uncheckedThumbColor = theme.textPrimary.copy(alpha = 0.45f),
+                                uncheckedTrackColor = theme.surfaceUi.copy(alpha = 0.5f)
+                            )
+                        )
+                    }
                 }
-                Slider(
-                    value = musicVolume,
-                    onValueChange = onVolumeChange,
-                    onValueChangeFinished = onVolumeChangeFinished,
-                    valueRange = 0f..1f,
-                    enabled = musicEnabled,
-                    colors = SliderDefaults.colors(
-                        thumbColor = theme.primaryUi,
-                        activeTrackColor = theme.primaryUi,
-                        inactiveTrackColor = theme.primaryUi.copy(alpha = 0.25f),
-                        disabledThumbColor = theme.primaryUi.copy(alpha = 0.3f),
-                        disabledActiveTrackColor = theme.primaryUi.copy(alpha = 0.2f),
-                        disabledInactiveTrackColor = theme.primaryUi.copy(alpha = 0.1f)
-                    )
-                )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    onClick = onClose,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = theme.primaryUi)
+                // Card 2: Music
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    color = theme.surfaceUi,
+                    border = BorderStroke(1.dp, theme.textPrimary.copy(alpha = 0.1f))
                 ) {
-                    Text(
-                        text = "DONE",
-                        color = theme.background,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // Music Note / Speaker Icon
+                            Canvas(modifier = Modifier.size(28.dp)) {
+                                val c = theme.textPrimary.copy(alpha = 0.9f)
+                                val strokeW = 2.dp.toPx()
+                                // Speaker body
+                                val spkPath = Path().apply {
+                                    moveTo(size.width * 0.12f, size.height * 0.36f)
+                                    lineTo(size.width * 0.32f, size.height * 0.36f)
+                                    lineTo(size.width * 0.50f, size.height * 0.18f)
+                                    lineTo(size.width * 0.50f, size.height * 0.82f)
+                                    lineTo(size.width * 0.32f, size.height * 0.64f)
+                                    lineTo(size.width * 0.12f, size.height * 0.64f)
+                                    close()
+                                }
+                                drawPath(spkPath, c)
+
+                                // Note 1
+                                drawCircle(c, radius = 2.5.dp.toPx(), center = Offset(size.width * 0.70f, size.height * 0.70f))
+                                drawLine(c, Offset(size.width * 0.70f + 2.dp.toPx(), size.height * 0.70f), Offset(size.width * 0.70f + 2.dp.toPx(), size.height * 0.34f), strokeWidth = strokeW, cap = StrokeCap.Round)
+
+                                // Note 2
+                                drawCircle(c, radius = 2.5.dp.toPx(), center = Offset(size.width * 0.90f, size.height * 0.52f))
+                                drawLine(c, Offset(size.width * 0.90f + 2.dp.toPx(), size.height * 0.52f), Offset(size.width * 0.90f + 2.dp.toPx(), size.height * 0.22f), strokeWidth = strokeW, cap = StrokeCap.Round)
+
+                                // Connecting Beam
+                                drawLine(c, Offset(size.width * 0.70f + 2.dp.toPx(), size.height * 0.34f), Offset(size.width * 0.90f + 2.dp.toPx(), size.height * 0.22f), strokeWidth = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                            }
+
+                            Text(
+                                text = "Music",
+                                color = theme.textPrimary,
+                                fontSize = 19.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Switch(
+                            checked = musicEnabled,
+                            onCheckedChange = onMusicChange,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = theme.primaryUi,
+                                uncheckedThumbColor = theme.textPrimary.copy(alpha = 0.45f),
+                                uncheckedTrackColor = theme.surfaceUi.copy(alpha = 0.5f)
+                            )
+                        )
+                    }
+                }
+
+                // Card 3: Music Volume
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    color = theme.surfaceUi,
+                    border = BorderStroke(1.dp, theme.textPrimary.copy(alpha = 0.1f))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 18.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Music Volume",
+                                color = theme.textPrimary,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+
+                            // Tooltip Pill showing percentage
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = theme.textPrimary.copy(alpha = 0.9f),
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                            ) {
+                                Text(
+                                    text = "${(musicVolume * 100).toInt()}%",
+                                    color = Color(0xFF061A0E),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Speaker icon
+                            Canvas(modifier = Modifier.size(24.dp)) {
+                                val c = theme.textPrimary.copy(alpha = if (musicEnabled) 0.85f else 0.35f)
+                                val path = Path().apply {
+                                    moveTo(size.width * 0.15f, size.height * 0.35f)
+                                    lineTo(size.width * 0.38f, size.height * 0.35f)
+                                    lineTo(size.width * 0.62f, size.height * 0.15f)
+                                    lineTo(size.width * 0.62f, size.height * 0.85f)
+                                    lineTo(size.width * 0.38f, size.height * 0.65f)
+                                    lineTo(size.width * 0.15f, size.height * 0.65f)
+                                    close()
+                                }
+                                drawPath(path, c)
+
+                                drawArc(
+                                    color = c,
+                                    startAngle = -45f,
+                                    sweepAngle = 90f,
+                                    useCenter = false,
+                                    topLeft = Offset(size.width * 0.48f, size.height * 0.28f),
+                                    size = Size(size.width * 0.32f, size.height * 0.44f),
+                                    style = Stroke(2.dp.toPx(), cap = StrokeCap.Round)
+                                )
+                                drawArc(
+                                    color = c,
+                                    startAngle = -45f,
+                                    sweepAngle = 90f,
+                                    useCenter = false,
+                                    topLeft = Offset(size.width * 0.58f, size.height * 0.16f),
+                                    size = Size(size.width * 0.48f, size.height * 0.68f),
+                                    style = Stroke(2.dp.toPx(), cap = StrokeCap.Round)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Slider(
+                                value = musicVolume,
+                                onValueChange = onVolumeChange,
+                                onValueChangeFinished = onVolumeChangeFinished,
+                                valueRange = 0f..1f,
+                                enabled = musicEnabled,
+                                modifier = Modifier.weight(1f),
+                                colors = SliderDefaults.colors(
+                                    thumbColor = theme.primaryUi,
+                                    activeTrackColor = theme.primaryUi,
+                                    inactiveTrackColor = theme.primaryUi.copy(alpha = 0.22f),
+                                    disabledThumbColor = theme.primaryUi.copy(alpha = 0.3f),
+                                    disabledActiveTrackColor = theme.primaryUi.copy(alpha = 0.18f),
+                                    disabledInactiveTrackColor = theme.primaryUi.copy(alpha = 0.1f)
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Card 4: Swipe Sensitivity
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    color = theme.surfaceUi,
+                    border = BorderStroke(1.dp, theme.textPrimary.copy(alpha = 0.1f))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 18.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                // Touch / Tap gesture icon
+                                Canvas(modifier = Modifier.size(26.dp)) {
+                                    val c = theme.textPrimary.copy(alpha = 0.9f)
+                                    val strokeW = 1.8.dp.toPx()
+
+                                    // Outer pulse arc
+                                    drawArc(
+                                        color = c.copy(alpha = 0.5f),
+                                        startAngle = -140f,
+                                        sweepAngle = 100f,
+                                        useCenter = false,
+                                        topLeft = Offset(size.width * 0.24f, size.height * 0.05f),
+                                        size = Size(size.width * 0.48f, size.height * 0.40f),
+                                        style = Stroke(strokeW, cap = StrokeCap.Round)
+                                    )
+
+                                    // Inner pulse arc
+                                    drawArc(
+                                        color = c,
+                                        startAngle = -140f,
+                                        sweepAngle = 100f,
+                                        useCenter = false,
+                                        topLeft = Offset(size.width * 0.34f, size.height * 0.15f),
+                                        size = Size(size.width * 0.28f, size.height * 0.25f),
+                                        style = Stroke(strokeW, cap = StrokeCap.Round)
+                                    )
+
+                                    // Pointing hand silhouette
+                                    val handPath = Path().apply {
+                                        moveTo(size.width * 0.42f, size.height * 0.48f)
+                                        lineTo(size.width * 0.42f, size.height * 0.28f)
+                                        // Fingertip
+                                        cubicTo(
+                                            size.width * 0.42f, size.height * 0.20f,
+                                            size.width * 0.54f, size.height * 0.20f,
+                                            size.width * 0.54f, size.height * 0.28f
+                                        )
+                                        lineTo(size.width * 0.54f, size.height * 0.50f)
+                                        lineTo(size.width * 0.72f, size.height * 0.54f)
+                                        lineTo(size.width * 0.72f, size.height * 0.72f)
+                                        lineTo(size.width * 0.45f, size.height * 0.90f)
+                                        lineTo(size.width * 0.28f, size.height * 0.68f)
+                                        close()
+                                    }
+                                    drawPath(handPath, c)
+                                }
+
+                                Text(
+                                    text = "Swipe Sensitivity",
+                                    color = theme.textPrimary,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = theme.surfaceUi.copy(alpha = 0.8f),
+                                border = BorderStroke(1.dp, theme.primaryUi.copy(alpha = 0.4f))
+                            ) {
+                                Text(
+                                    text = "${(swipeSensitivity * 100).toInt()}%",
+                                    color = theme.primaryUi,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Slider(
+                            value = swipeSensitivity,
+                            onValueChange = onSwipeSensitivityChange,
+                            onValueChangeFinished = onSwipeSensitivityChangeFinished,
+                            valueRange = 0.1f..1.0f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = theme.primaryUi,
+                                activeTrackColor = theme.primaryUi,
+                                inactiveTrackColor = theme.primaryUi.copy(alpha = 0.22f)
+                            )
+                        )
+                    }
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun SettingSwitchRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    theme: GameTheme,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = theme.textPrimary,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = subtitle,
-                color = theme.textPrimary.copy(alpha = 0.5f),
-                fontSize = 11.sp
-            )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Full-Width Matrix Neon DONE Button
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(62.dp),
+                onClick = onClose,
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(containerColor = theme.primaryUi),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+            ) {
+                Text(
+                    text = "DONE",
+                    color = Color(0xFF061A0E),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp
+                )
+            }
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = themedSwitchColors(theme)
-        )
     }
 }
 
