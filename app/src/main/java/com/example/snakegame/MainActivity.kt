@@ -645,16 +645,17 @@ fun SnakeGameApp(isForeground: Boolean) {
                     currentTheme = currentTheme,
                     isSpeedBoosted = System.currentTimeMillis() < speedBoostEndTime,
                     gameState = gameState,
+                    musicEnabled = musicEnabled,
+                    onMusicToggle = {
+                        musicEnabled = !musicEnabled
+                        prefs.edit { putBoolean("music_on", musicEnabled) }
+                    },
                     onPauseToggle = {
                         if (gameState == GameState.PLAYING) {
                             gameState = GameState.PAUSED
                         } else if (gameState == GameState.PAUSED) {
                             gameState = GameState.PLAYING
                         }
-                    },
-                    onSettingsClick = {
-                        if (gameState == GameState.PLAYING) gameState = GameState.PAUSED
-                        showSettings = true
                     }
                 )
 
@@ -675,16 +676,11 @@ fun SnakeGameApp(isForeground: Boolean) {
                         modifier = Modifier
                             .aspectRatio(gridWidth.toFloat() / gridHeight.toFloat())
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(26.dp))
                             .border(
-                                width = 2.dp,
-                                brush = Brush.linearGradient(
-                                    listOf(
-                                        currentTheme.primaryUi.copy(alpha = 0.8f),
-                                        currentTheme.primaryUi.copy(alpha = 0.2f)
-                                    )
-                                ),
-                                shape = RoundedCornerShape(14.dp)
+                                width = 5.dp,
+                                color = currentTheme.surfaceUi,
+                                shape = RoundedCornerShape(26.dp)
                             )
                             .pointerInput(gameState) {
                                 if (gameState != GameState.PLAYING) return@pointerInput
@@ -748,82 +744,102 @@ fun SnakeGameApp(isForeground: Boolean) {
                                 )
                             }
 
-                            // 2. Draw Obstacles
+                            // 2. Draw Obstacles: Smooth Rounded Grey Stones
                             for ((ox, oy) in obstacles) {
-                                val left = ox * cellWidth
-                                val top = oy * cellHeight
+                                val stoneCenterX = ox * cellWidth + cellWidth / 2f
+                                val stoneCenterY = oy * cellHeight + cellHeight / 2f
+                                val stoneR = (cellWidth.coerceAtMost(cellHeight) / 2f) - 2f
 
-                                // Outer Glow
-                                drawRoundRect(
-                                    color = currentTheme.obstacleGlow,
-                                    topLeft = Offset(left - 2f, top - 2f),
-                                    size = Size(cellWidth + 4f, cellHeight + 4f),
-                                    cornerRadius = CornerRadius(8f, 8f)
-                                )
-                                // Base Wall Block
-                                drawRoundRect(
-                                    color = currentTheme.obstacle,
-                                    topLeft = Offset(left + 2f, top + 2f),
-                                    size = Size(cellWidth - 4f, cellHeight - 4f),
-                                    cornerRadius = CornerRadius(6f, 6f)
-                                )
-                                // Hazard Center Core
+                                // Soft drop shadow
                                 drawCircle(
-                                    color = currentTheme.background.copy(alpha = 0.7f),
-                                    radius = cellWidth * 0.18f,
-                                    center = Offset(left + cellWidth / 2, top + cellHeight / 2)
+                                    color = Color.Black.copy(alpha = 0.28f),
+                                    radius = stoneR * 0.95f,
+                                    center = Offset(stoneCenterX + 2f, stoneCenterY + 3f)
+                                )
+                                // Smooth grey stone pebble base
+                                drawRoundRect(
+                                    color = Color(0xFF6B7F76),
+                                    topLeft = Offset(stoneCenterX - stoneR, stoneCenterY - stoneR * 0.85f),
+                                    size = Size(stoneR * 2f, stoneR * 1.7f),
+                                    cornerRadius = CornerRadius(stoneR * 0.65f, stoneR * 0.65f)
+                                )
+                                // Top highlight reflection
+                                drawRoundRect(
+                                    color = Color(0xFF8CA598).copy(alpha = 0.75f),
+                                    topLeft = Offset(stoneCenterX - stoneR * 0.65f, stoneCenterY - stoneR * 0.65f),
+                                    size = Size(stoneR * 0.9f, stoneR * 0.55f),
+                                    cornerRadius = CornerRadius(stoneR * 0.35f, stoneR * 0.35f)
                                 )
                             }
 
-                            // 3. Draw Food with Layered Glow & Polish
-                            val foodCenterX = currentFood.position.x * cellWidth + cellWidth / 2
-                            val foodCenterY = currentFood.position.y * cellHeight + cellHeight / 2
-                            val baseRadius = (cellWidth.coerceAtMost(cellHeight) / 2) - 3f
+                            // 3. Draw Food (Glossy Red Apple or Golden Apple with Sparkles)
+                            val foodCenterX = currentFood.position.x * cellWidth + cellWidth / 2f
+                            val foodCenterY = currentFood.position.y * cellHeight + cellHeight / 2f
+                            val baseRadius = (cellWidth.coerceAtMost(cellHeight) / 2f) - 3f
 
                             when (currentFood.type) {
                                 FoodType.NORMAL -> {
-                                    // Glow Ring
+                                    // Soft drop shadow
                                     drawCircle(
-                                        color = currentTheme.normalFood.copy(alpha = 0.25f),
-                                        radius = baseRadius * 1.5f,
-                                        center = Offset(foodCenterX, foodCenterY)
+                                        color = Color.Black.copy(alpha = 0.25f),
+                                        radius = baseRadius * 0.9f,
+                                        center = Offset(foodCenterX + 1.5f, foodCenterY + 2.5f)
                                     )
-                                    // Solid Orb
+                                    // Red Apple Body
                                     drawCircle(
                                         color = currentTheme.normalFood,
                                         radius = baseRadius,
                                         center = Offset(foodCenterX, foodCenterY)
                                     )
-                                    // Specular Highlight
+                                    // Glossy Specular Highlight
                                     drawCircle(
-                                        color = Color.White.copy(alpha = 0.75f),
-                                        radius = baseRadius * 0.32f,
+                                        color = Color.White.copy(alpha = 0.72f),
+                                        radius = baseRadius * 0.30f,
                                         center = Offset(foodCenterX - baseRadius * 0.35f, foodCenterY - baseRadius * 0.35f)
+                                    )
+                                    // Green Leaf & Stem
+                                    val leafColor = Color(0xFF5BA829)
+                                    drawArc(
+                                        color = leafColor,
+                                        startAngle = -45f,
+                                        sweepAngle = 75f,
+                                        useCenter = true,
+                                        topLeft = Offset(foodCenterX + 1f, foodCenterY - baseRadius * 1.35f),
+                                        size = Size(baseRadius * 0.75f, baseRadius * 0.6f)
                                     )
                                 }
                                 FoodType.GOLDEN -> {
                                     val pulseR = baseRadius * pulseScale
-                                    // Outer Radiant Halo
-                                    drawCircle(
-                                        color = currentTheme.goldenFood.copy(alpha = 0.35f),
-                                        radius = pulseR * 1.6f,
-                                        center = Offset(foodCenterX, foodCenterY)
-                                    )
-                                    // Golden Core
+                                    // Tiny sparkles around golden apple
+                                    val spColor = Color(0xFFFFE066)
+                                    val spSize = 3f * pulseScale
+                                    drawCircle(spColor, spSize, Offset(foodCenterX - pulseR * 1.3f, foodCenterY - pulseR * 0.6f))
+                                    drawCircle(spColor, spSize * 1.2f, Offset(foodCenterX + pulseR * 1.35f, foodCenterY - pulseR * 0.5f))
+                                    drawCircle(spColor, spSize * 0.8f, Offset(foodCenterX + pulseR * 1.1f, foodCenterY + pulseR * 0.8f))
+
+                                    // Golden Body
                                     drawCircle(
                                         color = currentTheme.goldenFood,
                                         radius = pulseR,
                                         center = Offset(foodCenterX, foodCenterY)
                                     )
-                                    // Inner Spark
+                                    // Highlight
                                     drawCircle(
-                                        color = Color.White,
-                                        radius = pulseR * 0.4f,
-                                        center = Offset(foodCenterX, foodCenterY)
+                                        color = Color.White.copy(alpha = 0.85f),
+                                        radius = pulseR * 0.32f,
+                                        center = Offset(foodCenterX - pulseR * 0.35f, foodCenterY - pulseR * 0.35f)
+                                    )
+                                    // Golden Leaf
+                                    drawArc(
+                                        color = Color(0xFFD4AF37),
+                                        startAngle = -45f,
+                                        sweepAngle = 75f,
+                                        useCenter = true,
+                                        topLeft = Offset(foodCenterX + 1f, foodCenterY - pulseR * 1.35f),
+                                        size = Size(pulseR * 0.75f, pulseR * 0.6f)
                                     )
                                 }
                                 FoodType.SPEED_BOOST -> {
-                                    // Diamond Shape with Energy Glow
                                     val diamondPath = Path().apply {
                                         moveTo(foodCenterX, foodCenterY - baseRadius * 1.2f)
                                         lineTo(foodCenterX + baseRadius * 1.2f, foodCenterY)
@@ -831,84 +847,97 @@ fun SnakeGameApp(isForeground: Boolean) {
                                         lineTo(foodCenterX - baseRadius * 1.2f, foodCenterY)
                                         close()
                                     }
-                                    drawPath(
-                                        path = diamondPath,
-                                        color = currentTheme.speedFood.copy(alpha = 0.3f),
-                                        style = Stroke(width = 4f)
-                                    )
-                                    drawPath(
-                                        path = diamondPath,
-                                        color = currentTheme.speedFood,
-                                        style = Fill
-                                    )
-                                    // Core Bright Point
-                                    drawCircle(
-                                        color = Color.White,
-                                        radius = baseRadius * 0.35f,
-                                        center = Offset(foodCenterX, foodCenterY)
+                                    drawPath(diamondPath, color = currentTheme.speedFood.copy(alpha = 0.35f), style = Stroke(width = 4f))
+                                    drawPath(diamondPath, color = currentTheme.speedFood, style = Fill)
+                                    drawCircle(color = Color.White, radius = baseRadius * 0.35f, center = Offset(foodCenterX, foodCenterY))
+                                }
+                            }
+
+                            // 4. Draw ONE Smooth Continuous Rounded Tube Snake
+                            val tubeRadius = (cellWidth.coerceAtMost(cellHeight) / 2f) * 0.88f
+
+                            // Continuous body segment links
+                            for (i in 0 until snake.size - 1) {
+                                val segA = snake[i]
+                                val segB = snake[i + 1]
+                                if (abs(segA.x - segB.x) <= 1 && abs(segA.y - segB.y) <= 1) {
+                                    val pA = Offset(segA.x * cellWidth + cellWidth / 2f, segA.y * cellHeight + cellHeight / 2f)
+                                    val pB = Offset(segB.x * cellWidth + cellWidth / 2f, segB.y * cellHeight + cellHeight / 2f)
+                                    val progress = 1f - (i.toFloat() / snake.size)
+                                    val segColor = currentTheme.snakeBody.copy(alpha = 0.85f + 0.15f * progress)
+                                    drawLine(
+                                        color = segColor,
+                                        start = pA,
+                                        end = pB,
+                                        strokeWidth = tubeRadius * 2f,
+                                        cap = StrokeCap.Round
                                     )
                                 }
                             }
 
-                            // 4. Draw Snake Body & Head
+                            // Segment discs (tail tapered, head detailed with eyes and smile)
                             snake.forEachIndexed { index, segment ->
-                                val segLeft = segment.x * cellWidth
-                                val segTop = segment.y * cellHeight
+                                val cx = segment.x * cellWidth + cellWidth / 2f
+                                val cy = segment.y * cellHeight + cellHeight / 2f
+                                val isTail = index == snake.size - 1
+                                val r = if (isTail) tubeRadius * 0.72f else tubeRadius
 
                                 if (index == 0) {
-                                    // Soft head glow (skipped on the light Retro LCD theme)
                                     if (currentTheme != GameTheme.RETRO_GAMEBOY) {
                                         drawCircle(
                                             color = currentTheme.snakeHead.copy(alpha = 0.22f),
-                                            radius = cellWidth * 0.95f,
-                                            center = Offset(segLeft + cellWidth / 2, segTop + cellHeight / 2)
+                                            radius = tubeRadius * 1.4f,
+                                            center = Offset(cx, cy)
                                         )
                                     }
+                                    drawCircle(color = currentTheme.snakeHead, radius = tubeRadius, center = Offset(cx, cy))
 
-                                    // Snake Head
-                                    drawRoundRect(
-                                        color = currentTheme.snakeHead,
-                                        topLeft = Offset(segLeft + 1f, segTop + 1f),
-                                        size = Size(cellWidth - 2f, cellHeight - 2f),
-                                        cornerRadius = CornerRadius(10f, 10f)
-                                    )
-
-                                    // Eyes with Directional Placement
-                                    val eyeRadius = cellWidth * 0.14f
-                                    val pupilRadius = eyeRadius * 0.55f
+                                    // Big Cartoon Eyes with Black Pupils
+                                    val eyeRadius = tubeRadius * 0.34f
+                                    val pupilRadius = eyeRadius * 0.52f
                                     val (eye1Offset, eye2Offset) = when (currentDirection) {
                                         Direction.UP -> Pair(
-                                            Offset(segLeft + cellWidth * 0.3f, segTop + cellHeight * 0.3f),
-                                            Offset(segLeft + cellWidth * 0.7f, segTop + cellHeight * 0.3f)
+                                            Offset(cx - tubeRadius * 0.38f, cy - tubeRadius * 0.25f),
+                                            Offset(cx + tubeRadius * 0.38f, cy - tubeRadius * 0.25f)
                                         )
                                         Direction.DOWN -> Pair(
-                                            Offset(segLeft + cellWidth * 0.3f, segTop + cellHeight * 0.7f),
-                                            Offset(segLeft + cellWidth * 0.7f, segTop + cellHeight * 0.7f)
+                                            Offset(cx - tubeRadius * 0.38f, cy + tubeRadius * 0.25f),
+                                            Offset(cx + tubeRadius * 0.38f, cy + tubeRadius * 0.25f)
                                         )
                                         Direction.LEFT -> Pair(
-                                            Offset(segLeft + cellWidth * 0.3f, segTop + cellHeight * 0.3f),
-                                            Offset(segLeft + cellWidth * 0.3f, segTop + cellHeight * 0.7f)
+                                            Offset(cx - tubeRadius * 0.25f, cy - tubeRadius * 0.38f),
+                                            Offset(cx - tubeRadius * 0.25f, cy + tubeRadius * 0.38f)
                                         )
                                         Direction.RIGHT -> Pair(
-                                            Offset(segLeft + cellWidth * 0.7f, segTop + cellHeight * 0.3f),
-                                            Offset(segLeft + cellWidth * 0.7f, segTop + cellHeight * 0.7f)
+                                            Offset(cx + tubeRadius * 0.25f, cy - tubeRadius * 0.38f),
+                                            Offset(cx + tubeRadius * 0.25f, cy + tubeRadius * 0.38f)
                                         )
                                     }
 
-                                    // Draw Eyes
                                     drawCircle(color = Color.White, radius = eyeRadius, center = eye1Offset)
                                     drawCircle(color = Color.White, radius = eyeRadius, center = eye2Offset)
                                     drawCircle(color = Color.Black, radius = pupilRadius, center = eye1Offset)
                                     drawCircle(color = Color.Black, radius = pupilRadius, center = eye2Offset)
+
+                                    // Friendly mouth curve
+                                    val mouthC = Color.Black.copy(alpha = 0.6f)
+                                    val mouthOffset = when (currentDirection) {
+                                        Direction.RIGHT -> Offset(cx + tubeRadius * 0.55f, cy)
+                                        Direction.LEFT -> Offset(cx - tubeRadius * 0.55f, cy)
+                                        Direction.UP -> Offset(cx, cy - tubeRadius * 0.55f)
+                                        Direction.DOWN -> Offset(cx, cy + tubeRadius * 0.55f)
+                                    }
+                                    drawCircle(color = mouthC, radius = 2.5f, center = mouthOffset)
                                 } else {
-                                    // Snake Body Segments (Tapered Alpha & Gradient)
-                                    val progress = 1f - (index.toFloat() / (snake.size + 2f))
-                                    val bodyColor = currentTheme.snakeBody.copy(alpha = 0.65f + 0.35f * progress)
-                                    drawRoundRect(
-                                        color = bodyColor,
-                                        topLeft = Offset(segLeft + 2f, segTop + 2f),
-                                        size = Size(cellWidth - 4f, cellHeight - 4f),
-                                        cornerRadius = CornerRadius(8f, 8f)
+                                    val progress = 1f - (index.toFloat() / snake.size)
+                                    val bodyColor = currentTheme.snakeBody.copy(alpha = 0.85f + 0.15f * progress)
+                                    drawCircle(color = bodyColor, radius = r, center = Offset(cx, cy))
+
+                                    // Subtle glossy highlight
+                                    drawCircle(
+                                        color = Color.White.copy(alpha = 0.20f),
+                                        radius = r * 0.35f,
+                                        center = Offset(cx - r * 0.3f, cy - r * 0.3f)
                                     )
                                 }
                             }
@@ -942,14 +971,10 @@ fun SnakeGameApp(isForeground: Boolean) {
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-                // Tactile Virtual D-Pad Controller
-                VirtualDPad(
-                    theme = currentTheme,
-                    enabled = gameState == GameState.PLAYING,
-                    onDirectionClick = { dir -> queueDirection(dir) }
-                )
+                // Bottom Gesture Hint ("Swipe anywhere to steer") - No D-pad / buttons
+                SwipeSteerHint(theme = currentTheme)
             }
 
             // OVERLAYS: Menu, Pause, Game Over, Settings, Splash
@@ -1057,8 +1082,9 @@ fun GameTopBar(
     currentTheme: GameTheme,
     isSpeedBoosted: Boolean,
     gameState: GameState,
-    onPauseToggle: () -> Unit,
-    onSettingsClick: () -> Unit
+    musicEnabled: Boolean,
+    onMusicToggle: () -> Unit,
+    onPauseToggle: () -> Unit
 ) {
     val shownScore by animateIntAsState(
         targetValue = score,
@@ -1066,209 +1092,206 @@ fun GameTopBar(
         label = "scoreCount"
     )
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = currentTheme.surfaceUi.copy(alpha = 0.92f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left: Score & High Score
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "SCORE",
-                        color = currentTheme.primaryUi.copy(alpha = 0.7f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    if (isSpeedBoosted) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "⚡ BOOSTED",
-                            color = currentTheme.speedFood,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
-                }
-                Text(
-                    text = "$shownScore",
-                    color = currentTheme.textPrimary,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Black
-                )
-            }
-
-            // Center: Trophy High Score
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "🏆 BEST",
-                    color = currentTheme.goldenFood,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "$highScore",
-                    color = currentTheme.goldenFood,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            }
-
-            // Right: Pause & Settings Action Buttons
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(
-                    onClick = onPauseToggle,
-                    enabled = gameState == GameState.PLAYING || gameState == GameState.PAUSED,
-                    modifier = Modifier.size(42.dp),
-                    color = currentTheme.primaryUi.copy(alpha = 0.15f),
-                    shape = CircleShape
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = if (gameState == GameState.PAUSED) "▶" else "❚❚",
-                            color = currentTheme.primaryUi,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                Surface(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.size(42.dp),
-                    color = currentTheme.primaryUi.copy(alpha = 0.15f),
-                    shape = CircleShape
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "⚙",
-                            color = currentTheme.primaryUi,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ==========================================
-// 5. ON-SCREEN VIRTUAL D-PAD
-// ==========================================
-
-@Composable
-fun VirtualDPad(
-    theme: GameTheme,
-    enabled: Boolean,
-    onDirectionClick: (Direction) -> Unit
-) {
-    val dpadSize = 146.dp
-    val buttonSize = 44.dp
-
-    Box(
+    Row(
         modifier = Modifier
-            .size(dpadSize)
-            .padding(2.dp),
-        contentAlignment = Alignment.Center
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Decorative Center Ring
-        Surface(
-            modifier = Modifier.size(buttonSize),
-            shape = CircleShape,
-            color = theme.surfaceUi.copy(alpha = 0.5f),
-            border = BorderStroke(1.5.dp, theme.primaryUi.copy(alpha = 0.3f))
+        // Left: Apple Icon + Score
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(theme.primaryUi.copy(alpha = 0.6f), CircleShape)
+            Canvas(modifier = Modifier.size(28.dp)) {
+                val r = size.width * 0.38f
+                val cx = size.width * 0.48f
+                val cy = size.height * 0.56f
+                // Apple
+                drawCircle(color = currentTheme.normalFood, radius = r, center = Offset(cx, cy))
+                drawCircle(color = Color.White.copy(alpha = 0.7f), radius = r * 0.28f, center = Offset(cx - r * 0.35f, cy - r * 0.35f))
+                // Stem / Leaf
+                drawArc(
+                    color = Color(0xFF5BA829),
+                    startAngle = -45f,
+                    sweepAngle = 75f,
+                    useCenter = true,
+                    topLeft = Offset(cx + 1f, cy - r * 1.35f),
+                    size = Size(r * 0.8f, r * 0.65f)
                 )
             }
-        }
-
-        // UP Button
-        DPadArrowButton(
-            symbol = "▲",
-            modifier = Modifier.align(Alignment.TopCenter),
-            size = buttonSize,
-            theme = theme,
-            enabled = enabled
-        ) {
-            onDirectionClick(Direction.UP)
-        }
-
-        // DOWN Button
-        DPadArrowButton(
-            symbol = "▼",
-            modifier = Modifier.align(Alignment.BottomCenter),
-            size = buttonSize,
-            theme = theme,
-            enabled = enabled
-        ) {
-            onDirectionClick(Direction.DOWN)
-        }
-
-        // LEFT Button
-        DPadArrowButton(
-            symbol = "◄",
-            modifier = Modifier.align(Alignment.CenterStart),
-            size = buttonSize,
-            theme = theme,
-            enabled = enabled
-        ) {
-            onDirectionClick(Direction.LEFT)
-        }
-
-        // RIGHT Button
-        DPadArrowButton(
-            symbol = "►",
-            modifier = Modifier.align(Alignment.CenterEnd),
-            size = buttonSize,
-            theme = theme,
-            enabled = enabled
-        ) {
-            onDirectionClick(Direction.RIGHT)
-        }
-    }
-}
-
-@Composable
-fun DPadArrowButton(
-    symbol: String,
-    modifier: Modifier,
-    size: Dp,
-    theme: GameTheme,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier
-            .size(size)
-            .shadow(4.dp, RoundedCornerShape(14.dp)),
-        shape = RoundedCornerShape(14.dp),
-        color = theme.surfaceUi,
-        border = BorderStroke(1.5.dp, theme.primaryUi.copy(alpha = 0.6f))
-    ) {
-        Box(contentAlignment = Alignment.Center) {
             Text(
-                text = symbol,
-                color = if (enabled) theme.primaryUi else theme.primaryUi.copy(alpha = 0.3f),
-                fontSize = 18.sp,
+                text = "$shownScore",
+                color = currentTheme.textPrimary,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Black
             )
+            if (isSpeedBoosted) {
+                Text(
+                    text = "⚡",
+                    color = currentTheme.speedFood,
+                    fontSize = 20.sp
+                )
+            }
+        }
+
+        // Center: Trophy Icon + High Score
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Canvas(modifier = Modifier.size(28.dp)) {
+                val c = Color(0xFFFFD129)
+                // Trophy Cup
+                val cupPath = Path().apply {
+                    moveTo(size.width * 0.25f, size.height * 0.22f)
+                    lineTo(size.width * 0.75f, size.height * 0.22f)
+                    lineTo(size.width * 0.70f, size.height * 0.58f)
+                    cubicTo(
+                        size.width * 0.65f, size.height * 0.72f,
+                        size.width * 0.35f, size.height * 0.72f,
+                        size.width * 0.30f, size.height * 0.58f
+                    )
+                    close()
+                }
+                drawPath(cupPath, c)
+                // Stem
+                drawRect(c, topLeft = Offset(size.width * 0.44f, size.height * 0.68f), size = Size(size.width * 0.12f, size.height * 0.14f))
+                // Base
+                drawRoundRect(c, topLeft = Offset(size.width * 0.28f, size.height * 0.80f), size = Size(size.width * 0.44f, size.height * 0.10f), cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx()))
+                // Handles
+                drawArc(c, startAngle = 100f, sweepAngle = 160f, useCenter = false, topLeft = Offset(size.width * 0.12f, size.height * 0.28f), size = Size(size.width * 0.25f, size.height * 0.28f), style = Stroke(2.dp.toPx()))
+                drawArc(c, startAngle = -80f, sweepAngle = 160f, useCenter = false, topLeft = Offset(size.width * 0.63f, size.height * 0.28f), size = Size(size.width * 0.25f, size.height * 0.28f), style = Stroke(2.dp.toPx()))
+            }
+            Text(
+                text = "$highScore",
+                color = currentTheme.textPrimary,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+
+        // Right: Speaker Toggle & Pause Buttons
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Speaker Button
+            Surface(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clickable { onMusicToggle() },
+                shape = CircleShape,
+                color = currentTheme.surfaceUi,
+                border = BorderStroke(1.dp, currentTheme.textPrimary.copy(alpha = 0.1f))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Canvas(modifier = Modifier.size(20.dp)) {
+                        val c = currentTheme.textPrimary.copy(alpha = if (musicEnabled) 0.9f else 0.4f)
+                        val spkPath = Path().apply {
+                            moveTo(size.width * 0.15f, size.height * 0.35f)
+                            lineTo(size.width * 0.38f, size.height * 0.35f)
+                            lineTo(size.width * 0.65f, size.height * 0.15f)
+                            lineTo(size.width * 0.65f, size.height * 0.85f)
+                            lineTo(size.width * 0.38f, size.height * 0.65f)
+                            lineTo(size.width * 0.15f, size.height * 0.65f)
+                            close()
+                        }
+                        drawPath(spkPath, c)
+                        if (musicEnabled) {
+                            drawArc(c, startAngle = -45f, sweepAngle = 90f, useCenter = false, topLeft = Offset(size.width * 0.55f, size.height * 0.25f), size = Size(size.width * 0.35f, size.height * 0.50f), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+                        } else {
+                            drawLine(c, Offset(size.width * 0.2f, size.height * 0.2f), Offset(size.width * 0.8f, size.height * 0.8f), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                        }
+                    }
+                }
+            }
+
+            // Pause Button
+            Surface(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clickable { onPauseToggle() },
+                shape = CircleShape,
+                color = currentTheme.surfaceUi,
+                border = BorderStroke(1.dp, currentTheme.textPrimary.copy(alpha = 0.1f))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Canvas(modifier = Modifier.size(16.dp)) {
+                        val c = currentTheme.textPrimary
+                        if (gameState == GameState.PAUSED) {
+                            // Play triangle
+                            val playPath = Path().apply {
+                                moveTo(size.width * 0.30f, size.height * 0.18f)
+                                lineTo(size.width * 0.82f, size.height * 0.50f)
+                                lineTo(size.width * 0.30f, size.height * 0.82f)
+                                close()
+                            }
+                            drawPath(playPath, c)
+                        } else {
+                            // Two pause bars
+                            val barW = 3.5.dp.toPx()
+                            drawRoundRect(c, topLeft = Offset(size.width * 0.25f, size.height * 0.15f), size = Size(barW, size.height * 0.70f), cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx()))
+                            drawRoundRect(c, topLeft = Offset(size.width * 0.60f, size.height * 0.15f), size = Size(barW, size.height * 0.70f), cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx()))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==========================================
+// 5. BOTTOM GESTURE HINT ("Swipe anywhere to steer")
+// ==========================================
+
+@Composable
+fun SwipeSteerHint(
+    theme: GameTheme,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Swipe anywhere to steer",
+            color = theme.textPrimary.copy(alpha = 0.72f),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Canvas(modifier = Modifier.size(22.dp)) {
+            val c = theme.textPrimary.copy(alpha = 0.85f)
+            val strokeW = 1.8.dp.toPx()
+            // Gesture ripple arc
+            drawArc(
+                color = c.copy(alpha = 0.45f),
+                startAngle = -140f,
+                sweepAngle = 100f,
+                useCenter = false,
+                topLeft = Offset(size.width * 0.22f, size.height * 0.05f),
+                size = Size(size.width * 0.50f, size.height * 0.40f),
+                style = Stroke(strokeW, cap = StrokeCap.Round)
+            )
+            // Hand silhouette
+            val handPath = Path().apply {
+                moveTo(size.width * 0.42f, size.height * 0.48f)
+                lineTo(size.width * 0.42f, size.height * 0.28f)
+                cubicTo(
+                    size.width * 0.42f, size.height * 0.20f,
+                    size.width * 0.54f, size.height * 0.20f,
+                    size.width * 0.54f, size.height * 0.28f
+                )
+                lineTo(size.width * 0.54f, size.height * 0.50f)
+                lineTo(size.width * 0.72f, size.height * 0.54f)
+                lineTo(size.width * 0.72f, size.height * 0.72f)
+                lineTo(size.width * 0.45f, size.height * 0.90f)
+                lineTo(size.width * 0.28f, size.height * 0.68f)
+                close()
+            }
+            drawPath(handPath, c)
         }
     }
 }
