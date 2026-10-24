@@ -9,3 +9,9 @@ captures/
 .externalNativeBuild/
 .cxx/
 /MainActivity.kt
+
+# Keystore and signing secrets
+*.jks
+*.keystore
+keystore.properties
+
