@@ -180,12 +180,13 @@ fun CoinBalance(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
+    val palette = CitrusTheme.palette
     Surface(
         modifier = modifier
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
             .shadow(2.dp, shape = CitrusShapes.Pill),
         shape = CitrusShapes.Pill,
-        color = CitrusColors.SoftCardBg,
+        color = palette.softCardBg,
         border = BorderStroke(1.5.dp, CitrusColors.WarmGoldenYellow)
     ) {
         Row(
@@ -202,7 +203,7 @@ fun CoinBalance(
             }
             Text(
                 text = "$coins",
-                color = CitrusColors.DeepInk,
+                color = palette.textPrimary,
                 fontWeight = FontWeight.Black,
                 fontSize = 14.sp
             )
@@ -217,11 +218,12 @@ fun ScorePill(
     modifier: Modifier = Modifier,
     accentColor: Color = CitrusColors.DeepCobalt
 ) {
+    val palette = CitrusTheme.palette
     Surface(
         modifier = modifier.shadow(2.dp, shape = CitrusShapes.Pill),
         shape = CitrusShapes.Pill,
-        color = CitrusColors.SoftCardBg,
-        border = BorderStroke(1.2.dp, CitrusColors.SoftCardBorder)
+        color = palette.softCardBg,
+        border = BorderStroke(1.2.dp, palette.softCardBorder)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -230,7 +232,7 @@ fun ScorePill(
         ) {
             Text(
                 text = label.uppercase(),
-                color = CitrusColors.SecondaryMutedText,
+                color = palette.textSecondary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.ExtraBold
             )
@@ -250,11 +252,12 @@ fun GameStatCard(
     bestScore: Int,
     modifier: Modifier = Modifier
 ) {
+    val palette = CitrusTheme.palette
     Surface(
         modifier = modifier.shadow(4.dp, shape = CitrusShapes.CardMedium),
         shape = CitrusShapes.CardMedium,
-        color = CitrusColors.SoftCardBg,
-        border = BorderStroke(1.5.dp, CitrusColors.SoftCardBorder)
+        color = palette.softCardBg,
+        border = BorderStroke(1.5.dp, palette.softCardBorder)
     ) {
         Row(
             modifier = Modifier
@@ -269,13 +272,13 @@ fun GameStatCard(
             ) {
                 Text(
                     text = "Score",
-                    color = CitrusColors.SecondaryMutedText,
+                    color = palette.textSecondary,
                     style = CitrusTypography.Caption
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "$score",
-                    color = CitrusColors.DeepInk,
+                    color = palette.textPrimary,
                     fontWeight = FontWeight.Black,
                     fontSize = 32.sp
                 )
@@ -286,7 +289,7 @@ fun GameStatCard(
                 modifier = Modifier
                     .width(1.dp)
                     .height(44.dp)
-                    .background(CitrusColors.SoftCardBorder)
+                    .background(palette.softCardBorder)
             )
 
             // Best Score Column
@@ -296,13 +299,13 @@ fun GameStatCard(
             ) {
                 Text(
                     text = "Best",
-                    color = CitrusColors.SecondaryMutedText,
+                    color = palette.textSecondary,
                     style = CitrusTypography.Caption
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "$bestScore",
-                    color = CitrusColors.DeepCobalt,
+                    color = palette.deepCobalt,
                     fontWeight = FontWeight.Black,
                     fontSize = 32.sp
                 )
@@ -322,6 +325,7 @@ fun ThemePreviewCard(
     onSelect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val palette = CitrusTheme.palette
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -331,10 +335,10 @@ fun ThemePreviewCard(
                 shape = CitrusShapes.CardMedium
             ),
         shape = CitrusShapes.CardMedium,
-        color = CitrusColors.SoftCardBg,
+        color = palette.softCardBg,
         border = BorderStroke(
             width = if (isSelected) 2.5.dp else 1.2.dp,
-            color = if (isSelected) CitrusColors.WarmGoldenYellow else CitrusColors.SoftCardBorder
+            color = if (isSelected) CitrusColors.WarmGoldenYellow else palette.softCardBorder
         )
     ) {
         Row(
@@ -391,14 +395,14 @@ fun ThemePreviewCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = theme.themeName,
-                    color = CitrusColors.DeepInk,
+                    color = palette.textPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = theme.tagline,
-                    color = CitrusColors.SecondaryMutedText,
+                    color = palette.textSecondary,
                     fontSize = 12.sp
                 )
             }
@@ -436,6 +440,7 @@ fun SettingsToggleRow(
     modifier: Modifier = Modifier,
     icon: (@Composable () -> Unit)? = null
 ) {
+    val palette = CitrusTheme.palette
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -454,7 +459,7 @@ fun SettingsToggleRow(
             }
             Text(
                 text = title,
-                color = CitrusColors.DeepInk,
+                color = palette.textPrimary,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp
             )
@@ -478,6 +483,7 @@ fun LeaderboardRow(
     entry: LeaderboardEntry,
     modifier: Modifier = Modifier
 ) {
+    val palette = CitrusTheme.palette
     val isTop3 = entry.rank in 1..3
     val rankBadgeColor = when (entry.rank) {
         1 -> Color(0xFFFFD34E)
@@ -494,10 +500,10 @@ fun LeaderboardRow(
                 shape = CitrusShapes.CardSmall
             ),
         shape = CitrusShapes.CardSmall,
-        color = if (entry.isCurrentPlayer) CitrusColors.WarmGoldenYellow.copy(alpha = 0.35f) else CitrusColors.SoftCardBg,
+        color = if (entry.isCurrentPlayer) CitrusColors.WarmGoldenYellow.copy(alpha = 0.35f) else palette.softCardBg,
         border = BorderStroke(
             width = if (entry.isCurrentPlayer) 1.5.dp else 1.dp,
-            color = if (entry.isCurrentPlayer) CitrusColors.WarmGoldenYellow else CitrusColors.SoftCardBorder
+            color = if (entry.isCurrentPlayer) CitrusColors.WarmGoldenYellow else palette.softCardBorder
         )
     ) {
         Row(
@@ -517,14 +523,14 @@ fun LeaderboardRow(
                     }
                     Text(
                         text = "${entry.rank}",
-                        color = CitrusColors.DeepInk,
+                        color = Color(0xFF202747),
                         fontWeight = FontWeight.Black,
                         fontSize = 13.sp
                     )
                 } else {
                     Text(
                         text = "${entry.rank}",
-                        color = CitrusColors.SecondaryMutedText,
+                        color = palette.textSecondary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -568,7 +574,7 @@ fun LeaderboardRow(
             // Player Name
             Text(
                 text = entry.name,
-                color = CitrusColors.DeepInk,
+                color = palette.textPrimary,
                 fontWeight = if (entry.isCurrentPlayer) FontWeight.Black else FontWeight.Bold,
                 fontSize = 15.sp,
                 modifier = Modifier.weight(1f)
@@ -577,7 +583,7 @@ fun LeaderboardRow(
             // Score
             Text(
                 text = "${entry.score}",
-                color = if (entry.isCurrentPlayer) CitrusColors.DeepCobalt else CitrusColors.DeepInk,
+                color = if (entry.isCurrentPlayer) palette.deepCobalt else palette.textPrimary,
                 fontWeight = FontWeight.Black,
                 fontSize = 16.sp
             )
@@ -590,9 +596,10 @@ fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier
 ) {
+    val palette = CitrusTheme.palette
     Text(
         text = title,
-        color = CitrusColors.DeepCobalt,
+        color = palette.deepCobalt,
         fontWeight = FontWeight.Bold,
         fontSize = 16.sp,
         modifier = modifier.padding(vertical = 4.dp)

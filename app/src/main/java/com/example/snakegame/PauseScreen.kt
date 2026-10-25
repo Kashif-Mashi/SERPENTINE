@@ -27,10 +27,11 @@ fun PauseScreen(
     onQuit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val palette = CitrusTheme.palette
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(CitrusColors.BackgroundWarmCream)
+            .background(palette.background)
     ) {
         // Playful citrus blob decorations around edges
         CitrusBackgroundDecorations()

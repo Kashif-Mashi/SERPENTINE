@@ -54,11 +54,12 @@ fun GameOverScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            val palette = CitrusTheme.palette
             // 2. White / Soft Card Container
             SerpentineCard(
                 modifier = Modifier.fillMaxWidth(0.92f),
-                containerColor = CitrusColors.SoftCardBg,
-                borderColor = CitrusColors.SoftCardBorder
+                containerColor = palette.softCardBg,
+                borderColor = palette.softCardBorder
             ) {
                 // Game Over Heading
                 Text(

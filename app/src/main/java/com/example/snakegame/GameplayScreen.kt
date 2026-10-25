@@ -53,16 +53,25 @@ fun GameplayScreen(
     gridWidth: Int,
     gridHeight: Int,
     swipeSensitivity: Float,
+    portalWallsEnabled: Boolean,
+    darkModeEnabled: Boolean,
     onDirectionChange: (Direction) -> Unit,
     onPauseClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val textMeasurer = rememberTextMeasurer()
 
+    val palette = CitrusTheme.palette
+    val effectiveBg = if (darkModeEnabled && currentTheme == GameTheme.CITRUS_POP) palette.background else currentTheme.background
+    val effectiveText = if (darkModeEnabled && currentTheme == GameTheme.CITRUS_POP) palette.textPrimary else currentTheme.textPrimary
+    val effectiveSurface = if (darkModeEnabled && currentTheme == GameTheme.CITRUS_POP) palette.surface else currentTheme.surfaceUi
+    val effectiveCheckerLight = if (darkModeEnabled && currentTheme == GameTheme.CITRUS_POP) palette.checkerLight else currentTheme.checkerLight
+    val effectiveCheckerDark = if (darkModeEnabled && currentTheme == GameTheme.CITRUS_POP) palette.checkerDark else currentTheme.checkerDark
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(currentTheme.background)
+            .background(effectiveBg)
     ) {
         // Decorative Citrus Shapes in corners
         CitrusBackgroundDecorations()
@@ -115,19 +124,19 @@ fun GameplayScreen(
 
                 // Center Score & Best
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "Score",
-                            color = currentTheme.textPrimary.copy(alpha = 0.65f),
+                            color = effectiveText.copy(alpha = 0.65f),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "$score",
-                            color = currentTheme.textPrimary,
+                            color = effectiveText,
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -136,7 +145,7 @@ fun GameplayScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "Best",
-                            color = currentTheme.textPrimary.copy(alpha = 0.65f),
+                            color = effectiveText.copy(alpha = 0.65f),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -149,41 +158,58 @@ fun GameplayScreen(
                     }
                 }
 
-                // Apple Counter
-                Surface(
-                    modifier = Modifier.shadow(2.dp, shape = CitrusShapes.Pill),
-                    shape = CitrusShapes.Pill,
-                    color = currentTheme.surfaceUi,
-                    border = BorderStroke(1.2.dp, currentTheme.primaryUi.copy(alpha = 0.2f))
+                // Apple Counter + Optional Portal Walls badge
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Canvas(modifier = Modifier.size(18.dp)) {
-                            val r = size.width * 0.42f
-                            val cx = size.width * 0.48f
-                            val cy = size.height * 0.58f
-                            // Apple Body
-                            drawCircle(color = currentTheme.normalFood, radius = r, center = Offset(cx, cy))
-                            drawCircle(color = Color.White.copy(alpha = 0.65f), radius = r * 0.28f, center = Offset(cx - r * 0.35f, cy - r * 0.35f))
-                            // Leaf
-                            drawArc(
-                                color = Color(0xFF5BA829),
-                                startAngle = -45f,
-                                sweepAngle = 75f,
-                                useCenter = true,
-                                topLeft = Offset(cx + 1f, cy - r * 1.35f),
-                                size = Size(r * 0.8f, r * 0.65f)
+                    if (portalWallsEnabled) {
+                        Surface(
+                            shape = CitrusShapes.Pill,
+                            color = CitrusColors.CitrusLime.copy(alpha = 0.25f),
+                            border = BorderStroke(1.2.dp, CitrusColors.CitrusLime)
+                        ) {
+                            Text(
+                                text = "🌀",
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
                             )
                         }
-                        Text(
-                            text = "${score.coerceAtLeast(0)}",
-                            color = currentTheme.textPrimary,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 15.sp
-                        )
+                    }
+
+                    Surface(
+                        modifier = Modifier.shadow(2.dp, shape = CitrusShapes.Pill),
+                        shape = CitrusShapes.Pill,
+                        color = effectiveSurface,
+                        border = BorderStroke(1.2.dp, currentTheme.primaryUi.copy(alpha = 0.2f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Canvas(modifier = Modifier.size(18.dp)) {
+                                val r = size.width * 0.42f
+                                val cx = size.width * 0.48f
+                                val cy = size.height * 0.58f
+                                drawCircle(color = currentTheme.normalFood, radius = r, center = Offset(cx, cy))
+                                drawCircle(color = Color.White.copy(alpha = 0.65f), radius = r * 0.28f, center = Offset(cx - r * 0.35f, cy - r * 0.35f))
+                                drawArc(
+                                    color = Color(0xFF5BA829),
+                                    startAngle = -45f,
+                                    sweepAngle = 75f,
+                                    useCenter = true,
+                                    topLeft = Offset(cx + 1f, cy - r * 1.35f),
+                                    size = Size(r * 0.8f, r * 0.65f)
+                                )
+                            }
+                            Text(
+                                text = "${score.coerceAtLeast(0)}",
+                                color = effectiveText,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 15.sp
+                            )
+                        }
                     }
                 }
             }
@@ -201,14 +227,20 @@ fun GameplayScreen(
                 var dragX by remember { mutableFloatStateOf(0f) }
                 var dragY by remember { mutableFloatStateOf(0f) }
 
+                val borderColor = if (portalWallsEnabled) {
+                    CitrusColors.WarmGoldenYellow
+                } else {
+                    CitrusColors.DeepCobalt.copy(alpha = 0.55f)
+                }
+
                 Box(
                     modifier = Modifier
                         .aspectRatio(gridWidth.toFloat() / gridHeight.toFloat())
                         .fillMaxSize()
                         .clip(RoundedCornerShape(26.dp))
                         .border(
-                            width = 4.dp,
-                            color = CitrusColors.DeepCobalt.copy(alpha = 0.45f),
+                            width = if (portalWallsEnabled) 4.5.dp else 4.dp,
+                            color = borderColor,
                             shape = RoundedCornerShape(26.dp)
                         )
                         .pointerInput(Unit) {
@@ -248,7 +280,7 @@ fun GameplayScreen(
                             for (y in 0 until gridHeight) {
                                 val isEven = (x + y) % 2 == 0
                                 drawRect(
-                                    color = if (isEven) currentTheme.checkerLight else currentTheme.checkerDark,
+                                    color = if (isEven) effectiveCheckerLight else effectiveCheckerDark,
                                     topLeft = Offset(x * cellWidth, y * cellHeight),
                                     size = Size(cellWidth, cellHeight)
                                 )
@@ -320,7 +352,6 @@ fun GameplayScreen(
                                     radius = baseRadius * 0.30f,
                                     center = Offset(foodCenterX - baseRadius * 0.35f, foodCenterY - baseRadius * 0.35f)
                                 )
-                                // Green Leaf & Stem
                                 val leafColor = Color(0xFF5BA829)
                                 drawArc(
                                     color = leafColor,
@@ -374,7 +405,6 @@ fun GameplayScreen(
                         // D. Smooth Continuous Tube Snake
                         val tubeRadius = (cellWidth.coerceAtMost(cellHeight) / 2f) * 0.88f
 
-                        // Body links
                         for (i in 0 until snake.size - 1) {
                             val segA = snake[i]
                             val segB = snake[i + 1]
@@ -401,7 +431,6 @@ fun GameplayScreen(
                             val r = if (isTail) tubeRadius * 0.72f else tubeRadius
 
                             if (index == 0) {
-                                // Head Glow
                                 drawCircle(
                                     color = currentTheme.snakeHead.copy(alpha = 0.25f),
                                     radius = tubeRadius * 1.4f,
@@ -409,7 +438,6 @@ fun GameplayScreen(
                                 )
                                 drawCircle(color = currentTheme.snakeHead, radius = tubeRadius, center = Offset(cx, cy))
 
-                                // Big Cartoon Eyes
                                 val eyeRadius = tubeRadius * 0.34f
                                 val pupilRadius = eyeRadius * 0.52f
                                 val (eye1Offset, eye2Offset) = when (currentDirection) {
@@ -433,19 +461,18 @@ fun GameplayScreen(
 
                                 drawCircle(color = Color.White, radius = eyeRadius, center = eye1Offset)
                                 drawCircle(color = Color.White, radius = eyeRadius, center = eye2Offset)
-                                drawCircle(color = CitrusColors.DeepInk, radius = pupilRadius, center = eye1Offset)
-                                drawCircle(color = CitrusColors.DeepInk, radius = pupilRadius, center = eye2Offset)
+                                drawCircle(color = Color(0xFF202747), radius = pupilRadius, center = eye1Offset)
+                                drawCircle(color = Color(0xFF202747), radius = pupilRadius, center = eye2Offset)
                                 drawCircle(color = Color.White, radius = pupilRadius * 0.4f, center = Offset(eye1Offset.x - 1f, eye1Offset.y - 1f))
                                 drawCircle(color = Color.White, radius = pupilRadius * 0.4f, center = Offset(eye2Offset.x - 1f, eye2Offset.y - 1f))
 
-                                // Friendly mouth curve
                                 val mouthOffset = when (currentDirection) {
                                     Direction.RIGHT -> Offset(cx + tubeRadius * 0.55f, cy)
                                     Direction.LEFT -> Offset(cx - tubeRadius * 0.55f, cy)
                                     Direction.UP -> Offset(cx, cy - tubeRadius * 0.55f)
                                     Direction.DOWN -> Offset(cx, cy + tubeRadius * 0.55f)
                                 }
-                                drawCircle(color = CitrusColors.DeepInk, radius = 2.5f, center = mouthOffset)
+                                drawCircle(color = Color(0xFF202747), radius = 2.5f, center = mouthOffset)
                             } else {
                                 val progress = 1f - (index.toFloat() / snake.size)
                                 val bodyColor = currentTheme.snakeBody.copy(alpha = 0.85f + 0.15f * progress)
@@ -496,7 +523,7 @@ fun GameplayScreen(
                         .fillMaxWidth()
                         .shadow(4.dp, shape = CitrusShapes.CardMedium),
                     shape = CitrusShapes.CardMedium,
-                    color = CitrusColors.SoftCardBg,
+                    color = effectiveSurface,
                     border = BorderStroke(1.5.dp, CitrusColors.DeepCobalt.copy(alpha = 0.4f))
                 ) {
                     Row(
@@ -518,7 +545,7 @@ fun GameplayScreen(
                         Column {
                             Text(
                                 text = "Speed Boost",
-                                color = CitrusColors.DeepInk,
+                                color = effectiveText,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp
                             )
@@ -536,7 +563,7 @@ fun GameplayScreen(
                         .fillMaxWidth()
                         .shadow(2.dp, shape = CitrusShapes.Pill),
                     shape = CitrusShapes.Pill,
-                    color = CitrusColors.SoftCardBg.copy(alpha = 0.85f),
+                    color = effectiveSurface.copy(alpha = 0.85f),
                     border = BorderStroke(1.dp, CitrusColors.SoftCardBorder)
                 ) {
                     Row(
@@ -547,8 +574,8 @@ fun GameplayScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Swipe anywhere on board to steer",
-                            color = CitrusColors.SecondaryMutedText,
+                            text = if (portalWallsEnabled) "Portal Walls Active: Pass through boundaries safely! 🌀" else "Swipe anywhere on board to steer",
+                            color = if (portalWallsEnabled) CitrusColors.TomatoCoral else CitrusColors.SecondaryMutedText,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
                         )

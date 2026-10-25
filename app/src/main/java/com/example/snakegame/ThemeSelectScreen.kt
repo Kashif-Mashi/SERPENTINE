@@ -52,10 +52,11 @@ fun ThemeSelectScreen(
         )
     }
 
+    val palette = CitrusTheme.palette
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(CitrusColors.BackgroundWarmCream)
+            .background(palette.background)
     ) {
         Column(
             modifier = Modifier
@@ -76,8 +77,8 @@ fun ThemeSelectScreen(
                         .clickable { onBackClick() }
                         .shadow(2.dp, shape = CircleShape),
                     shape = CircleShape,
-                    color = CitrusColors.SoftCardBg,
-                    border = BorderStroke(1.2.dp, CitrusColors.SoftCardBorder)
+                    color = palette.softCardBg,
+                    border = BorderStroke(1.2.dp, palette.softCardBorder)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Canvas(modifier = Modifier.size(16.dp)) {
@@ -194,8 +195,8 @@ fun ThemeSelectScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .shadow(8.dp),
-                color = CitrusColors.SoftCardBg,
-                border = BorderStroke(1.dp, CitrusColors.SoftCardBorder)
+                color = palette.softCardBg,
+                border = BorderStroke(1.dp, palette.softCardBorder)
             ) {
                 Row(
                     modifier = Modifier

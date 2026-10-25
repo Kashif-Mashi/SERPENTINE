@@ -54,10 +54,11 @@ fun ShopScreen(
         )
     }
 
+    val palette = CitrusTheme.palette
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(CitrusColors.BackgroundWarmCream)
+            .background(palette.background)
     ) {
         Column(
             modifier = Modifier
@@ -79,8 +80,8 @@ fun ShopScreen(
                         .clickable { onBackClick() }
                         .shadow(2.dp, shape = CircleShape),
                     shape = CircleShape,
-                    color = CitrusColors.SoftCardBg,
-                    border = BorderStroke(1.2.dp, CitrusColors.SoftCardBorder)
+                    color = palette.softCardBg,
+                    border = BorderStroke(1.2.dp, palette.softCardBorder)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Canvas(modifier = Modifier.size(16.dp)) {
@@ -317,22 +318,23 @@ fun ShopTabButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val palette = CitrusTheme.palette
     Surface(
         modifier = modifier
             .height(38.dp)
             .clickable { onClick() }
             .shadow(if (isSelected) 3.dp else 1.dp, shape = CitrusShapes.Pill),
         shape = CitrusShapes.Pill,
-        color = if (isSelected) CitrusColors.WarmGoldenYellow else CitrusColors.SoftCardBg,
+        color = if (isSelected) CitrusColors.WarmGoldenYellow else palette.softCardBg,
         border = BorderStroke(
             1.2.dp,
-            if (isSelected) CitrusColors.WarmGoldenDark else CitrusColors.SoftCardBorder
+            if (isSelected) CitrusColors.WarmGoldenDark else palette.softCardBorder
         )
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = title,
-                color = CitrusColors.DeepInk,
+                color = if (isSelected) Color(0xFF202747) else palette.textPrimary,
                 fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
                 fontSize = 13.sp
             )
@@ -350,13 +352,14 @@ fun ShopThemeItemRow(
     onEquip: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val palette = CitrusTheme.palette
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .shadow(2.dp, shape = CitrusShapes.CardSmall),
         shape = CitrusShapes.CardSmall,
-        color = CitrusColors.SoftCardBg,
-        border = BorderStroke(1.2.dp, CitrusColors.SoftCardBorder)
+        color = palette.softCardBg,
+        border = BorderStroke(1.2.dp, palette.softCardBorder)
     ) {
         Row(
             modifier = Modifier
@@ -476,13 +479,14 @@ fun ShopGenericItemRow(
     onAction: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val palette = CitrusTheme.palette
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .shadow(2.dp, shape = CitrusShapes.CardSmall),
         shape = CitrusShapes.CardSmall,
-        color = CitrusColors.SoftCardBg,
-        border = BorderStroke(1.2.dp, CitrusColors.SoftCardBorder)
+        color = palette.softCardBg,
+        border = BorderStroke(1.2.dp, palette.softCardBorder)
     ) {
         Row(
             modifier = Modifier
@@ -493,13 +497,13 @@ fun ShopGenericItemRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = CitrusColors.DeepInk,
+                    color = palette.textPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
                 Text(
                     text = description,
-                    color = CitrusColors.SecondaryMutedText,
+                    color = palette.textSecondary,
                     fontSize = 11.sp
                 )
             }

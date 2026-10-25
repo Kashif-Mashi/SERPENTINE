@@ -16,8 +16,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -27,7 +25,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,7 +43,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -63,6 +59,7 @@ import kotlinx.coroutines.launch
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 
+@Suppress("unused")
 const val APP_NAME = "Serpentine"
 const val APP_TAGLINE = "Small Snake. Big Adventure."
 
@@ -119,7 +116,7 @@ fun SnakeGameApp(isForeground: Boolean) {
         mutableStateOf(set)
     }
 
-    // Audio & Haptics Settings
+    // Audio & Haptics & Game Rules Settings
     var vibrationEnabled by remember { mutableStateOf(prefs.getBoolean("vibration", true)) }
     var hapticsEnabled by remember { mutableStateOf(prefs.getBoolean("haptics_on", true)) }
     var musicEnabled by remember { mutableStateOf(prefs.getBoolean("music_on", true)) }
@@ -127,6 +124,7 @@ fun SnakeGameApp(isForeground: Boolean) {
     var musicVolume by remember { mutableFloatStateOf(prefs.getFloat("music_volume", 0.6f)) }
     var swipeSensitivity by remember { mutableFloatStateOf(prefs.getFloat("swipe_sensitivity", 0.65f)) }
     var darkModeEnabled by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
+    var portalWallsEnabled by remember { mutableStateOf(prefs.getBoolean("portal_walls", false)) }
 
     // Score Tracking
     var score by remember { mutableIntStateOf(0) }
@@ -349,7 +347,7 @@ fun SnakeGameApp(isForeground: Boolean) {
     // ------------------------------------------
     // Main Game Tick Loop
     // ------------------------------------------
-    LaunchedEffect(currentScreen, currentDifficulty, speedBoostEndTime) {
+    LaunchedEffect(currentScreen, currentDifficulty, speedBoostEndTime, portalWallsEnabled) {
         while (isActive && currentScreen == AppScreen.GAMEPLAY) {
             val now = System.currentTimeMillis()
             val isBoosted = now < speedBoostEndTime
@@ -367,15 +365,22 @@ fun SnakeGameApp(isForeground: Boolean) {
             }
 
             // Step 2: Next Head Position
-            val nextX = snake.first().x + currentDirection.dx
-            val nextY = snake.first().y + currentDirection.dy
+            var nextX = snake.first().x + currentDirection.dx
+            var nextY = snake.first().y + currentDirection.dy
 
-            // Boundary collision
-            if (nextX !in 0 until gridWidth || nextY !in 0 until gridHeight) {
-                currentScreen = AppScreen.GAME_OVER
-                triggerHaptic(HapticType.HEAVY)
-                if (soundEffectsEnabled) sfx.playCrash()
-                continue
+            // Boundary handling: Portal Walls wrap around, or fatal collision
+            if (portalWallsEnabled) {
+                if (nextX < 0) nextX = gridWidth - 1
+                if (nextX >= gridWidth) nextX = 0
+                if (nextY < 0) nextY = gridHeight - 1
+                if (nextY >= gridHeight) nextY = 0
+            } else {
+                if (nextX !in 0 until gridWidth || nextY !in 0 until gridHeight) {
+                    currentScreen = AppScreen.GAME_OVER
+                    triggerHaptic(HapticType.HEAVY)
+                    if (soundEffectsEnabled) sfx.playCrash()
+                    continue
+                }
             }
 
             val nextHead = Point(nextX, nextY)
@@ -463,240 +468,256 @@ fun SnakeGameApp(isForeground: Boolean) {
     }
 
     // ------------------------------------------
-    // ROOT UI CONTAINER & NAVIGATION ROUTER
+    // ROOT UI CONTAINER WITH DYNAMIC CITRUS THEME
     // ------------------------------------------
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = if (darkModeEnabled) CitrusColors.DeepInk else currentTheme.background
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            when (currentScreen) {
-                AppScreen.MAIN_MENU -> {
-                    MainMenuScreen(
-                        highScore = highScore,
-                        coins = coins,
-                        onPlayClick = { startNewGame() },
-                        onThemesClick = {
-                            previousScreen = AppScreen.MAIN_MENU
-                            currentScreen = AppScreen.THEME_SELECT
-                        },
-                        onSettingsClick = {
-                            previousScreen = AppScreen.MAIN_MENU
-                            currentScreen = AppScreen.SETTINGS
-                        },
-                        onShopClick = {
-                            currentScreen = AppScreen.SHOP
-                        },
-                        onLeaderboardClick = {
-                            currentScreen = AppScreen.LEADERBOARD
-                        }
-                    )
-                }
-
-                AppScreen.THEME_SELECT -> {
-                    ThemeSelectScreen(
-                        currentTheme = currentTheme,
-                        onThemeSelect = { newTheme ->
-                            currentTheme = newTheme
-                            prefs.edit { putString("selected_theme", newTheme.themeName) }
-                            if (soundEffectsEnabled) sfx.playButtonClick()
-                        },
-                        onBackClick = {
-                            currentScreen = previousScreen
-                        }
-                    )
-                }
-
-                AppScreen.GAMEPLAY -> {
-                    GameplayScreen(
-                        currentTheme = currentTheme,
-                        score = score,
-                        highScore = highScore,
-                        snake = snake,
-                        currentDirection = currentDirection,
-                        currentFood = currentFood,
-                        obstacles = obstacles,
-                        particles = particles,
-                        floatingTexts = floatingTexts,
-                        isSpeedBoosted = System.currentTimeMillis() < speedBoostEndTime,
-                        pulseScale = pulseScale,
-                        frameTick = frameTick,
-                        gridWidth = gridWidth,
-                        gridHeight = gridHeight,
-                        swipeSensitivity = swipeSensitivity,
-                        onDirectionChange = { dir -> queueDirection(dir) },
-                        onPauseClick = { currentScreen = AppScreen.PAUSED }
-                    )
-                }
-
-                AppScreen.PAUSED -> {
-                    PauseScreen(
-                        onResume = {
-                            currentScreen = AppScreen.GAMEPLAY
-                            if (soundEffectsEnabled) sfx.playButtonClick()
-                        },
-                        onRestart = { startNewGame() },
-                        onChangeTheme = {
-                            previousScreen = AppScreen.PAUSED
-                            currentScreen = AppScreen.THEME_SELECT
-                        },
-                        onSettings = {
-                            previousScreen = AppScreen.PAUSED
-                            currentScreen = AppScreen.SETTINGS
-                        },
-                        onQuit = {
-                            currentScreen = AppScreen.MAIN_MENU
-                        }
-                    )
-                }
-
-                AppScreen.GAME_OVER -> {
-                    GameOverScreen(
-                        finalScore = score,
-                        highScore = highScore,
-                        onTryAgain = { startNewGame() },
-                        onMainMenu = { currentScreen = AppScreen.MAIN_MENU }
-                    )
-                }
-
-                AppScreen.SHOP -> {
-                    ShopScreen(
-                        coins = coins,
-                        unlockedThemes = unlockedThemes,
-                        currentTheme = currentTheme,
-                        onThemePurchased = { purchasedTheme ->
-                            if (purchasedTheme.themeName !in unlockedThemes && coins >= purchasedTheme.coinPrice) {
-                                coins -= purchasedTheme.coinPrice
-                                val updatedSet = unlockedThemes + purchasedTheme.themeName
-                                unlockedThemes = updatedSet
-                                prefs.edit {
-                                    putInt("coins", coins)
-                                    putStringSet("unlocked_themes", updatedSet)
-                                }
-                                if (soundEffectsEnabled) sfx.playCoin()
+    SerpentineTheme(darkMode = darkModeEnabled) {
+        val currentPalette = CitrusTheme.palette
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = currentPalette.background
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (currentScreen) {
+                    AppScreen.MAIN_MENU -> {
+                        MainMenuScreen(
+                            highScore = highScore,
+                            coins = coins,
+                            portalWallsEnabled = portalWallsEnabled,
+                            onPortalWallsToggle = {
+                                portalWallsEnabled = it
+                                prefs.edit { putBoolean("portal_walls", it) }
+                            },
+                            onPlayClick = { startNewGame() },
+                            onThemesClick = {
+                                previousScreen = AppScreen.MAIN_MENU
+                                currentScreen = AppScreen.THEME_SELECT
+                            },
+                            onSettingsClick = {
+                                previousScreen = AppScreen.MAIN_MENU
+                                currentScreen = AppScreen.SETTINGS
+                            },
+                            onShopClick = {
+                                currentScreen = AppScreen.SHOP
+                            },
+                            onLeaderboardClick = {
+                                currentScreen = AppScreen.LEADERBOARD
                             }
-                            currentTheme = purchasedTheme
-                            prefs.edit { putString("selected_theme", purchasedTheme.themeName) }
-                        },
-                        onCoinsRewarded = { reward ->
-                            coins += reward
-                            prefs.edit { putInt("coins", coins) }
-                            if (soundEffectsEnabled) sfx.playCoin()
-                            triggerHaptic(HapticType.DOUBLE)
-                        },
-                        onBackClick = { currentScreen = AppScreen.MAIN_MENU }
-                    )
-                }
-
-                AppScreen.LEADERBOARD -> {
-                    LeaderboardScreen(
-                        userHighScore = highScore,
-                        onBackClick = { currentScreen = AppScreen.MAIN_MENU }
-                    )
-                }
-
-                AppScreen.SETTINGS -> {
-                    SettingsScreen(
-                        musicEnabled = musicEnabled,
-                        soundEffectsEnabled = soundEffectsEnabled,
-                        hapticsEnabled = hapticsEnabled,
-                        selectedDifficulty = currentDifficulty,
-                        darkModeEnabled = darkModeEnabled,
-                        vibrationEnabled = vibrationEnabled,
-                        onMusicToggle = {
-                            musicEnabled = it
-                            prefs.edit { putBoolean("music_on", it) }
-                        },
-                        onSoundEffectsToggle = {
-                            soundEffectsEnabled = it
-                            prefs.edit { putBoolean("sfx_on", it) }
-                        },
-                        onHapticsToggle = {
-                            hapticsEnabled = it
-                            prefs.edit { putBoolean("haptics_on", it) }
-                            if (it) performHaptic(context, HapticType.MEDIUM)
-                        },
-                        onDifficultySelected = {
-                            currentDifficulty = it
-                            prefs.edit { putString("difficulty", it.name) }
-                        },
-                        onDarkModeToggle = {
-                            darkModeEnabled = it
-                            prefs.edit { putBoolean("dark_mode", it) }
-                        },
-                        onVibrationToggle = {
-                            vibrationEnabled = it
-                            prefs.edit { putBoolean("vibration", it) }
-                            if (it) performHaptic(context, HapticType.MEDIUM)
-                        },
-                        onBackClick = { currentScreen = previousScreen }
-                    )
-                }
-            }
-
-            // Splash Screen Overlay
-            AnimatedVisibility(
-                visible = showSplash,
-                enter = fadeIn(),
-                exit = fadeOut(tween(350))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(CitrusColors.BackgroundWarmCream)
-                        .pointerInput(Unit) { detectTapGestures { } },
-                    contentAlignment = Alignment.Center
-                ) {
-                    CitrusBackgroundDecorations()
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        CitrusSerpentineLogo()
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = APP_TAGLINE,
-                            style = CitrusTypography.Subtitle,
-                            color = CitrusColors.DeepInk.copy(alpha = 0.7f)
                         )
+                    }
 
-                        Spacer(modifier = Modifier.height(36.dp))
+                    AppScreen.THEME_SELECT -> {
+                        ThemeSelectScreen(
+                            currentTheme = currentTheme,
+                            onThemeSelect = { newTheme ->
+                                currentTheme = newTheme
+                                prefs.edit { putString("selected_theme", newTheme.themeName) }
+                                if (soundEffectsEnabled) sfx.playButtonClick()
+                            },
+                            onBackClick = {
+                                currentScreen = previousScreen
+                            }
+                        )
+                    }
 
-                        // Progress Bar Canvas
-                        val p = splashProgress.value.coerceIn(0f, 1f)
-                        Canvas(
-                            modifier = Modifier
-                                .width(220.dp)
-                                .height(10.dp)
+                    AppScreen.GAMEPLAY -> {
+                        GameplayScreen(
+                            currentTheme = currentTheme,
+                            score = score,
+                            highScore = highScore,
+                            snake = snake,
+                            currentDirection = currentDirection,
+                            currentFood = currentFood,
+                            obstacles = obstacles,
+                            particles = particles,
+                            floatingTexts = floatingTexts,
+                            isSpeedBoosted = System.currentTimeMillis() < speedBoostEndTime,
+                            pulseScale = pulseScale,
+                            frameTick = frameTick,
+                            gridWidth = gridWidth,
+                            gridHeight = gridHeight,
+                            swipeSensitivity = swipeSensitivity,
+                            portalWallsEnabled = portalWallsEnabled,
+                            darkModeEnabled = darkModeEnabled,
+                            onDirectionChange = { dir -> queueDirection(dir) },
+                            onPauseClick = { currentScreen = AppScreen.PAUSED }
+                        )
+                    }
+
+                    AppScreen.PAUSED -> {
+                        PauseScreen(
+                            onResume = {
+                                currentScreen = AppScreen.GAMEPLAY
+                                if (soundEffectsEnabled) sfx.playButtonClick()
+                            },
+                            onRestart = { startNewGame() },
+                            onChangeTheme = {
+                                previousScreen = AppScreen.PAUSED
+                                currentScreen = AppScreen.THEME_SELECT
+                            },
+                            onSettings = {
+                                previousScreen = AppScreen.PAUSED
+                                currentScreen = AppScreen.SETTINGS
+                            },
+                            onQuit = {
+                                currentScreen = AppScreen.MAIN_MENU
+                            }
+                        )
+                    }
+
+                    AppScreen.GAME_OVER -> {
+                        GameOverScreen(
+                            finalScore = score,
+                            highScore = highScore,
+                            onTryAgain = { startNewGame() },
+                            onMainMenu = { currentScreen = AppScreen.MAIN_MENU }
+                        )
+                    }
+
+                    AppScreen.SHOP -> {
+                        ShopScreen(
+                            coins = coins,
+                            unlockedThemes = unlockedThemes,
+                            currentTheme = currentTheme,
+                            onThemePurchased = { purchasedTheme ->
+                                if (purchasedTheme.themeName !in unlockedThemes && coins >= purchasedTheme.coinPrice) {
+                                    coins -= purchasedTheme.coinPrice
+                                    val updatedSet = unlockedThemes + purchasedTheme.themeName
+                                    unlockedThemes = updatedSet
+                                    prefs.edit {
+                                        putInt("coins", coins)
+                                        putStringSet("unlocked_themes", updatedSet)
+                                    }
+                                    if (soundEffectsEnabled) sfx.playCoin()
+                                }
+                                currentTheme = purchasedTheme
+                                prefs.edit { putString("selected_theme", purchasedTheme.themeName) }
+                            },
+                            onCoinsRewarded = { reward ->
+                                coins += reward
+                                prefs.edit { putInt("coins", coins) }
+                                if (soundEffectsEnabled) sfx.playCoin()
+                                triggerHaptic(HapticType.DOUBLE)
+                            },
+                            onBackClick = { currentScreen = AppScreen.MAIN_MENU }
+                        )
+                    }
+
+                    AppScreen.LEADERBOARD -> {
+                        LeaderboardScreen(
+                            userHighScore = highScore,
+                            onBackClick = { currentScreen = AppScreen.MAIN_MENU }
+                        )
+                    }
+
+                    AppScreen.SETTINGS -> {
+                        SettingsScreen(
+                            musicEnabled = musicEnabled,
+                            soundEffectsEnabled = soundEffectsEnabled,
+                            hapticsEnabled = hapticsEnabled,
+                            portalWallsEnabled = portalWallsEnabled,
+                            selectedDifficulty = currentDifficulty,
+                            darkModeEnabled = darkModeEnabled,
+                            vibrationEnabled = vibrationEnabled,
+                            onMusicToggle = {
+                                musicEnabled = it
+                                prefs.edit { putBoolean("music_on", it) }
+                            },
+                            onSoundEffectsToggle = {
+                                soundEffectsEnabled = it
+                                prefs.edit { putBoolean("sfx_on", it) }
+                            },
+                            onHapticsToggle = {
+                                hapticsEnabled = it
+                                prefs.edit { putBoolean("haptics_on", it) }
+                                if (it) performHaptic(context, HapticType.MEDIUM)
+                            },
+                            onPortalWallsToggle = {
+                                portalWallsEnabled = it
+                                prefs.edit { putBoolean("portal_walls", it) }
+                            },
+                            onDifficultySelected = {
+                                currentDifficulty = it
+                                prefs.edit { putString("difficulty", it.name) }
+                            },
+                            onDarkModeToggle = {
+                                darkModeEnabled = it
+                                prefs.edit { putBoolean("dark_mode", it) }
+                            },
+                            onVibrationToggle = {
+                                vibrationEnabled = it
+                                prefs.edit { putBoolean("vibration", it) }
+                                if (it) performHaptic(context, HapticType.MEDIUM)
+                            },
+                            onBackClick = { currentScreen = previousScreen }
+                        )
+                    }
+                }
+
+                // Splash Screen Overlay
+                AnimatedVisibility(
+                    visible = showSplash,
+                    enter = fadeIn(),
+                    exit = fadeOut(tween(350))
+                ) {
+                    val splashPalette = CitrusTheme.palette
+                    val splashBarBg = splashPalette.tomatoCoral.copy(alpha = 0.2f)
+                    val splashBarGradient = listOf(splashPalette.tomatoCoral, splashPalette.warmGoldenYellow)
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(splashPalette.background)
+                            .pointerInput(Unit) { detectTapGestures { } },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CitrusBackgroundDecorations()
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            val r = CornerRadius(size.height / 2f, size.height / 2f)
-                            drawRoundRect(
-                                color = CitrusColors.TomatoCoral.copy(alpha = 0.2f),
-                                size = size,
-                                cornerRadius = r
+                            CitrusSerpentineLogo()
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = APP_TAGLINE,
+                                style = CitrusTypography.Subtitle,
+                                color = splashPalette.textPrimary.copy(alpha = 0.7f)
                             )
-                            if (p > 0f) {
+
+                            Spacer(modifier = Modifier.height(36.dp))
+
+                            val p = splashProgress.value.coerceIn(0f, 1f)
+                            Canvas(
+                                modifier = Modifier
+                                    .width(220.dp)
+                                    .height(10.dp)
+                            ) {
+                                val r = CornerRadius(size.height / 2f, size.height / 2f)
                                 drawRoundRect(
-                                    brush = Brush.horizontalGradient(
-                                        listOf(CitrusColors.TomatoCoral, CitrusColors.WarmGoldenYellow)
-                                    ),
-                                    size = Size(size.width * p, size.height),
+                                    color = splashBarBg,
+                                    size = size,
                                     cornerRadius = r
                                 )
+                                if (p > 0f) {
+                                    drawRoundRect(
+                                        brush = Brush.horizontalGradient(splashBarGradient),
+                                        size = Size(size.width * p, size.height),
+                                        cornerRadius = r
+                                    )
+                                }
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "Loading ${(p * 100).toInt()}%",
+                                color = splashPalette.textSecondary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Text(
-                            text = "Loading ${(p * 100).toInt()}%",
-                            color = CitrusColors.SecondaryMutedText,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
                     }
                 }
             }

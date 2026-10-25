@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -29,22 +30,25 @@ fun SettingsScreen(
     musicEnabled: Boolean,
     soundEffectsEnabled: Boolean,
     hapticsEnabled: Boolean,
+    portalWallsEnabled: Boolean,
     selectedDifficulty: Difficulty,
     darkModeEnabled: Boolean,
     vibrationEnabled: Boolean,
     onMusicToggle: (Boolean) -> Unit,
     onSoundEffectsToggle: (Boolean) -> Unit,
     onHapticsToggle: (Boolean) -> Unit,
+    onPortalWallsToggle: (Boolean) -> Unit,
     onDifficultySelected: (Difficulty) -> Unit,
     onDarkModeToggle: (Boolean) -> Unit,
     onVibrationToggle: (Boolean) -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val palette = CitrusTheme.palette
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(CitrusColors.BackgroundWarmCream)
+            .background(palette.background)
     ) {
         // Decorative blobs at bottom
         CitrusBackgroundDecorations()
@@ -67,8 +71,8 @@ fun SettingsScreen(
                         .clickable { onBackClick() }
                         .shadow(2.dp, shape = CircleShape),
                     shape = CircleShape,
-                    color = CitrusColors.SoftCardBg,
-                    border = BorderStroke(1.2.dp, CitrusColors.SoftCardBorder)
+                    color = palette.softCardBg,
+                    border = BorderStroke(1.2.dp, palette.softCardBorder)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Canvas(modifier = Modifier.size(16.dp)) {
@@ -162,12 +166,38 @@ fun SettingsScreen(
                                     color = c,
                                     topLeft = Offset(size.width * 0.25f, size.height * 0.15f),
                                     size = androidx.compose.ui.geometry.Size(size.width * 0.50f, size.height * 0.70f),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx(), 3.dp.toPx()),
+                                    cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx()),
                                     style = Stroke(1.8.dp.toPx())
                                 )
-                                // Vibrate ripples
                                 drawLine(c, Offset(size.width * 0.10f, size.height * 0.35f), Offset(size.width * 0.10f, size.height * 0.65f), strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
                                 drawLine(c, Offset(size.width * 0.90f, size.height * 0.35f), Offset(size.width * 0.90f, size.height * 0.65f), strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
+                            }
+                        }
+                    )
+
+                    HorizontalDivider(color = CitrusColors.SoftCardBorder, thickness = 1.dp)
+
+                    SettingsToggleRow(
+                        title = "Portal Walls",
+                        checked = portalWallsEnabled,
+                        onCheckedChange = onPortalWallsToggle,
+                        icon = {
+                            Canvas(modifier = Modifier.size(20.dp)) {
+                                val c = CitrusColors.DeepCobalt
+                                drawRoundRect(
+                                    color = c,
+                                    topLeft = Offset(size.width * 0.15f, size.height * 0.15f),
+                                    size = androidx.compose.ui.geometry.Size(size.width * 0.70f, size.height * 0.70f),
+                                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+                                    style = Stroke(1.8.dp.toPx())
+                                )
+                                drawLine(
+                                    color = CitrusColors.TomatoCoral,
+                                    start = Offset(size.width * 0.35f, size.height * 0.25f),
+                                    end = Offset(size.width * 0.65f, size.height * 0.75f),
+                                    strokeWidth = 2.dp.toPx(),
+                                    cap = StrokeCap.Round
+                                )
                             }
                         }
                     )
@@ -266,16 +296,18 @@ fun SettingsScreen(
                         Column {
                             Text(
                                 text = "Serpentine Arcade",
+                                color = palette.textPrimary,
                                 style = CitrusTypography.BodyBold
                             )
                             Text(
                                 text = "Citrus Pop Edition",
+                                color = palette.textSecondary,
                                 style = CitrusTypography.Body
                             )
                         }
                         Surface(
                             shape = CitrusShapes.Pill,
-                            color = CitrusColors.BackgroundWarmCream
+                            color = palette.background
                         ) {
                             Text(
                                 text = "v1.0.0",
