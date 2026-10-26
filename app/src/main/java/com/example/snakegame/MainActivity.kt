@@ -88,8 +88,11 @@ class MainActivity : ComponentActivity() {
 fun SnakeGameApp(isForeground: Boolean) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("snake_game_prefs", Context.MODE_PRIVATE) }
-    val music = remember { MusicPlayer() }
-    val sfx = remember { SoundEffectsPlayer() }
+    val audio = remember { GameAudio(context) }
+    val music = audio
+    val sfx = audio
+    var comboCount by remember { mutableIntStateOf(0) }
+    var lastEatTime by remember { mutableLongStateOf(0L) }
 
     // Grid Dimensions
     val gridWidth = 20
@@ -281,10 +284,12 @@ fun SnakeGameApp(isForeground: Boolean) {
         floatingTexts.clear()
         score = 0
         speedBoostEndTime = 0L
+        comboCount = 0
+        lastEatTime = 0L
         currentFood = generateFood(snake, obstacles)
         currentScreen = AppScreen.GAMEPLAY
         triggerHaptic(HapticType.MEDIUM)
-        if (soundEffectsEnabled) sfx.playButtonClick()
+        if (soundEffectsEnabled) audio.playClick()
     }
 
     // ------------------------------------------
@@ -305,13 +310,19 @@ fun SnakeGameApp(isForeground: Boolean) {
     // ------------------------------------------
     val shouldPlayMusic = musicEnabled && isForeground && !showSplash && currentScreen != AppScreen.PAUSED
     LaunchedEffect(shouldPlayMusic) {
-        if (shouldPlayMusic) music.start() else music.pause()
+        if (shouldPlayMusic) audio.startMusic() else audio.pauseMusic()
     }
     LaunchedEffect(musicVolume) {
-        music.setVolume(musicVolume)
+        audio.setMusicVolume(musicVolume)
+    }
+    LaunchedEffect(soundEffectsEnabled) {
+        audio.sfxEnabled = soundEffectsEnabled
+    }
+    LaunchedEffect(speedBoostEndTime) {
+        audio.setMusicBoost(System.currentTimeMillis() < speedBoostEndTime)
     }
     DisposableEffect(Unit) {
-        onDispose { music.release() }
+        onDispose { audio.release() }
     }
 
     // Auto-pause when going to background
@@ -465,16 +476,22 @@ fun SnakeGameApp(isForeground: Boolean) {
                 when (currentFood.type) {
                     FoodType.NORMAL -> {
                         triggerHaptic(HapticType.LIGHT)
-                        if (soundEffectsEnabled) sfx.playEat()
+                        if (now - lastEatTime < 2400L) {
+                            comboCount = (comboCount + 1).coerceAtMost(5)
+                        } else {
+                            comboCount = 0
+                        }
+                        lastEatTime = now
+                        audio.playEat(comboCount)
                     }
                     FoodType.GOLDEN -> {
                         triggerHaptic(HapticType.DOUBLE)
-                        if (soundEffectsEnabled) sfx.playGoldenChime()
+                        audio.playGolden()
                     }
                     FoodType.SPEED_BOOST -> {
                         speedBoostEndTime = now + currentFood.type.durationMs
                         triggerHaptic(HapticType.MEDIUM)
-                        if (soundEffectsEnabled) sfx.playSpeedBoost()
+                        audio.playBoost()
                     }
                 }
 
