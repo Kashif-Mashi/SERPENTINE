@@ -35,7 +35,8 @@ enum class AppScreen {
 enum class FoodType(val points: Int, val durationMs: Long = 0L) {
     NORMAL(points = 1),
     GOLDEN(points = 5, durationMs = 8500L),
-    SPEED_BOOST(points = 2, durationMs = 6000L)
+    SPEED_BOOST(points = 2, durationMs = 6000L),
+    GHOST(points = 2, durationMs = 5000L)
 }
 
 data class Food(
@@ -94,7 +95,8 @@ enum class GameTheme(
     val textPrimary: Color,
     val checkerLight: Color,
     val checkerDark: Color,
-    val coinPrice: Int = 0
+    val coinPrice: Int = 0,
+    val ghostFood: Color = Color(0xFFB388FF)
 ) {
     CITRUS_POP(
         themeName = "Citrus Pop",

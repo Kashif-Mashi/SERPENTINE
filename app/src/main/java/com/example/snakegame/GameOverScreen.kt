@@ -2,6 +2,7 @@ package com.example.snakegame
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,6 +26,9 @@ import androidx.compose.ui.unit.sp
 fun GameOverScreen(
     finalScore: Int,
     highScore: Int,
+    coins: Int = 0,
+    canRevive: Boolean = false,
+    onRevive: () -> Unit = {},
     onTryAgain: () -> Unit,
     onMainMenu: () -> Unit,
     modifier: Modifier = Modifier
@@ -69,12 +73,53 @@ fun GameOverScreen(
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Total Coins Badge
+                Surface(
+                    shape = CitrusShapes.Pill,
+                    color = CitrusColors.WarmGoldenYellow.copy(alpha = 0.20f),
+                    border = BorderStroke(1.2.dp, CitrusColors.WarmGoldenYellow),
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(text = "🪙", fontSize = 14.sp)
+                        Text(
+                            text = "$coins Total Coins",
+                            color = CitrusColors.DeepCobalt,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Score & Best Stat Card
                 GameStatCard(score = finalScore, bestScore = highScore)
 
                 Spacer(modifier = Modifier.height(18.dp))
+
+                // Revive Button (once per run)
+                if (canRevive) {
+                    val hasEnoughCoins = coins >= 20
+                    SerpentinePrimaryButton(
+                        text = if (hasEnoughCoins) "Revive (20 coins)" else "Revive (Need 20 coins)",
+                        onClick = onRevive,
+                        enabled = hasEnoughCoins,
+                        containerColor = if (hasEnoughCoins) CitrusColors.CitrusLime else Color(0xFFC7CBD1),
+                        contentColor = if (hasEnoughCoins) CitrusColors.DeepCobalt else Color(0xFF6B7280),
+                        icon = {
+                            Text(text = "💖", fontSize = 16.sp)
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
 
                 // Try Again Button (Coral)
                 SerpentinePrimaryButton(

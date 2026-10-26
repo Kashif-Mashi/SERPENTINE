@@ -51,6 +51,9 @@ fun GameplayScreen(
     particles: List<Particle>,
     floatingTexts: List<FloatingText>,
     isSpeedBoosted: Boolean,
+    isGhostActive: Boolean = false,
+    isInvulnerable: Boolean = false,
+    comboCount: Int = 0,
     pulseScale: Float,
     frameTick: Long,
     gridWidth: Int,
@@ -131,12 +134,30 @@ fun GameplayScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Score",
-                            color = effectiveText.copy(alpha = 0.65f),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Score",
+                                color = effectiveText.copy(alpha = 0.65f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (comboCount >= 2) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                val multiplier = if (comboCount >= 5) "x3" else if (comboCount >= 3) "x2" else ""
+                                Surface(
+                                    shape = CitrusShapes.Pill,
+                                    color = CitrusColors.TomatoCoral
+                                ) {
+                                    Text(
+                                        text = if (multiplier.isNotEmpty()) "x$comboCount ($multiplier)" else "x$comboCount",
+                                        color = Color.White,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Black,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
                         Text(
                             text = "$score",
                             color = effectiveText,
@@ -454,10 +475,37 @@ fun GameplayScreen(
                                 drawPath(diamondPath, color = currentTheme.speedFood, style = Fill)
                                 drawCircle(color = Color.White, radius = baseRadius * 0.35f, center = Offset(foodCenterX, foodCenterY))
                             }
+                            FoodType.GHOST -> {
+                                val pulseR = baseRadius * pulseScale
+                                drawCircle(
+                                    color = currentTheme.ghostFood.copy(alpha = 0.35f),
+                                    radius = pulseR * 1.35f,
+                                    center = Offset(foodCenterX, foodCenterY)
+                                )
+                                drawCircle(
+                                    color = currentTheme.ghostFood,
+                                    radius = pulseR,
+                                    center = Offset(foodCenterX, foodCenterY)
+                                )
+                                drawCircle(
+                                    color = Color.White.copy(alpha = 0.65f),
+                                    radius = pulseR * 0.45f,
+                                    center = Offset(foodCenterX, foodCenterY)
+                                )
+                                val eyeR = pulseR * 0.22f
+                                val pupilR = eyeR * 0.55f
+                                val eyeLeft = Offset(foodCenterX - pulseR * 0.30f, foodCenterY - pulseR * 0.12f)
+                                val eyeRight = Offset(foodCenterX + pulseR * 0.30f, foodCenterY - pulseR * 0.12f)
+                                drawCircle(color = Color.White, radius = eyeR, center = eyeLeft)
+                                drawCircle(color = Color.White, radius = eyeR, center = eyeRight)
+                                drawCircle(color = Color(0xFF1E1035), radius = pupilR, center = eyeLeft)
+                                drawCircle(color = Color(0xFF1E1035), radius = pupilR, center = eyeRight)
+                            }
                         }
 
                         // D. Smooth Continuous Tube Snake
                         val tubeRadius = (cellWidth.coerceAtMost(cellHeight) / 2f) * 0.88f
+                        val ghostAlphaFactor = if (isGhostActive) 0.38f else if (isInvulnerable) 0.60f else 1f
 
                         for (i in 0 until snake.size - 1) {
                             val segA = snake[i]
@@ -466,7 +514,7 @@ fun GameplayScreen(
                                 val pA = Offset(segA.x * cellWidth + cellWidth / 2f, segA.y * cellHeight + cellHeight / 2f)
                                 val pB = Offset(segB.x * cellWidth + cellWidth / 2f, segB.y * cellHeight + cellHeight / 2f)
                                 val progress = 1f - (i.toFloat() / snake.size)
-                                val segColor = currentTheme.snakeBody.copy(alpha = 0.85f + 0.15f * progress)
+                                val segColor = currentTheme.snakeBody.copy(alpha = (0.85f + 0.15f * progress) * ghostAlphaFactor)
                                 drawLine(
                                     color = segColor,
                                     start = pA,
@@ -486,11 +534,20 @@ fun GameplayScreen(
 
                             if (index == 0) {
                                 drawCircle(
-                                    color = currentTheme.snakeHead.copy(alpha = 0.25f),
+                                    color = currentTheme.snakeHead.copy(alpha = 0.25f * ghostAlphaFactor),
                                     radius = tubeRadius * 1.4f,
                                     center = Offset(cx, cy)
                                 )
-                                drawCircle(color = currentTheme.snakeHead, radius = tubeRadius, center = Offset(cx, cy))
+                                drawCircle(color = currentTheme.snakeHead.copy(alpha = ghostAlphaFactor), radius = tubeRadius, center = Offset(cx, cy))
+
+                                if (isInvulnerable) {
+                                    drawCircle(
+                                        color = CitrusColors.WarmGoldenYellow.copy(alpha = 0.85f),
+                                        radius = tubeRadius * 1.55f,
+                                        center = Offset(cx, cy),
+                                        style = Stroke(width = 3.dp.toPx())
+                                    )
+                                }
 
                                 val eyeRadius = tubeRadius * 0.34f
                                 val pupilRadius = eyeRadius * 0.52f
@@ -513,12 +570,12 @@ fun GameplayScreen(
                                     )
                                 }
 
-                                drawCircle(color = Color.White, radius = eyeRadius, center = eye1Offset)
-                                drawCircle(color = Color.White, radius = eyeRadius, center = eye2Offset)
-                                drawCircle(color = Color(0xFF202747), radius = pupilRadius, center = eye1Offset)
-                                drawCircle(color = Color(0xFF202747), radius = pupilRadius, center = eye2Offset)
-                                drawCircle(color = Color.White, radius = pupilRadius * 0.4f, center = Offset(eye1Offset.x - 1f, eye1Offset.y - 1f))
-                                drawCircle(color = Color.White, radius = pupilRadius * 0.4f, center = Offset(eye2Offset.x - 1f, eye2Offset.y - 1f))
+                                drawCircle(color = Color.White.copy(alpha = ghostAlphaFactor), radius = eyeRadius, center = eye1Offset)
+                                drawCircle(color = Color.White.copy(alpha = ghostAlphaFactor), radius = eyeRadius, center = eye2Offset)
+                                drawCircle(color = Color(0xFF202747).copy(alpha = ghostAlphaFactor), radius = pupilRadius, center = eye1Offset)
+                                drawCircle(color = Color(0xFF202747).copy(alpha = ghostAlphaFactor), radius = pupilRadius, center = eye2Offset)
+                                drawCircle(color = Color.White.copy(alpha = ghostAlphaFactor), radius = pupilRadius * 0.4f, center = Offset(eye1Offset.x - 1f, eye1Offset.y - 1f))
+                                drawCircle(color = Color.White.copy(alpha = ghostAlphaFactor), radius = pupilRadius * 0.4f, center = Offset(eye2Offset.x - 1f, eye2Offset.y - 1f))
 
                                 val mouthOffset = when (currentDirection) {
                                     Direction.RIGHT -> Offset(cx + tubeRadius * 0.55f, cy)
@@ -526,13 +583,13 @@ fun GameplayScreen(
                                     Direction.UP -> Offset(cx, cy - tubeRadius * 0.55f)
                                     Direction.DOWN -> Offset(cx, cy + tubeRadius * 0.55f)
                                 }
-                                drawCircle(color = Color(0xFF202747), radius = 2.5f, center = mouthOffset)
+                                drawCircle(color = Color(0xFF202747).copy(alpha = ghostAlphaFactor), radius = 2.5f, center = mouthOffset)
                             } else {
                                 val progress = 1f - (index.toFloat() / snake.size)
-                                val bodyColor = currentTheme.snakeBody.copy(alpha = 0.85f + 0.15f * progress)
+                                val bodyColor = currentTheme.snakeBody.copy(alpha = (0.85f + 0.15f * progress) * ghostAlphaFactor)
                                 drawCircle(color = bodyColor, radius = r, center = Offset(cx, cy))
                                 drawCircle(
-                                    color = Color.White.copy(alpha = 0.20f),
+                                    color = Color.White.copy(alpha = 0.20f * ghostAlphaFactor),
                                     radius = r * 0.35f,
                                     center = Offset(cx - r * 0.3f, cy - r * 0.3f)
                                 )
@@ -571,7 +628,48 @@ fun GameplayScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             // 3. Power-Up Card or Swipe Steer Hint
-            if (isSpeedBoosted) {
+            if (isGhostActive) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, shape = CitrusShapes.CardMedium)
+                        .then(swipeModifier),
+                    shape = CitrusShapes.CardMedium,
+                    color = effectiveSurface,
+                    border = BorderStroke(1.5.dp, Color(0xFF9C27B0).copy(alpha = 0.4f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(38.dp),
+                            shape = CircleShape,
+                            color = Color(0xFF7E57C2)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(text = "👻", fontSize = 20.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(
+                                text = "Ghost Mode",
+                                color = effectiveText,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                            Text(
+                                text = "Pass through body & stones safely!",
+                                color = CitrusColors.SecondaryMutedText,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            } else if (isSpeedBoosted) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()

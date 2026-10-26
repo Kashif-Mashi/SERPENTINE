@@ -150,6 +150,9 @@ fun SnakeGameApp(isForeground: Boolean) {
     var currentFood by remember { mutableStateOf(Food(Point(15, 12), FoodType.NORMAL)) }
     var obstacles by remember { mutableStateOf(setOf<Point>()) }
     var speedBoostEndTime by remember { mutableLongStateOf(0L) }
+    var ghostEndTime by remember { mutableLongStateOf(0L) }
+    var invulnerabilityEndTime by remember { mutableLongStateOf(0L) }
+    var hasRevivedThisRun by remember { mutableStateOf(false) }
     val particles = remember { mutableStateListOf<Particle>() }
     val floatingTexts = remember { mutableStateListOf<FloatingText>() }
     var frameTick by remember { mutableLongStateOf(0L) }
@@ -220,8 +223,9 @@ fun SnakeGameApp(isForeground: Boolean) {
         val targetPoint = if (emptySlots.isNotEmpty()) emptySlots.random() else Point(0, 0)
         val roll = Random.nextFloat()
         val type = when {
-            roll < 0.15f -> FoodType.GOLDEN
-            roll < 0.30f -> FoodType.SPEED_BOOST
+            roll < 0.08f -> FoodType.GHOST
+            roll < 0.22f -> FoodType.GOLDEN
+            roll < 0.35f -> FoodType.SPEED_BOOST
             else -> FoodType.NORMAL
         }
         return Food(targetPoint, type)
@@ -284,12 +288,62 @@ fun SnakeGameApp(isForeground: Boolean) {
         floatingTexts.clear()
         score = 0
         speedBoostEndTime = 0L
+        ghostEndTime = 0L
+        invulnerabilityEndTime = 0L
+        hasRevivedThisRun = false
         comboCount = 0
         lastEatTime = 0L
         currentFood = generateFood(snake, obstacles)
         currentScreen = AppScreen.GAMEPLAY
         triggerHaptic(HapticType.MEDIUM)
         if (soundEffectsEnabled) audio.playClick()
+    }
+
+    // Revive Player Once Per Run
+    fun revivePlayer() {
+        if (coins < 20 || hasRevivedThisRun) return
+        coins -= 20
+        prefs.edit { putInt("coins", coins) }
+        hasRevivedThisRun = true
+
+        // Clears 3 cells ahead of the head
+        val head = snake.first()
+        val clearedCells = (1..3).map { step ->
+            var cx = head.x + currentDirection.dx * step
+            var cy = head.y + currentDirection.dy * step
+            if (portalWallsEnabled) {
+                cx = (cx % gridWidth + gridWidth) % gridWidth
+                cy = (cy % gridHeight + gridHeight) % gridHeight
+            }
+            Point(cx, cy)
+        }.toSet()
+
+        // Clear any obstacles in those cells
+        obstacles = obstacles - clearedCells
+
+        // Clear any colliding body segments in those cells
+        val newSnake = mutableListOf(head)
+        for (seg in snake.drop(1)) {
+            if (seg !in clearedCells) {
+                newSnake.add(seg)
+            }
+        }
+        if (newSnake.size < 2) {
+            newSnake.add(
+                Point(
+                    (head.x - currentDirection.dx + gridWidth) % gridWidth,
+                    (head.y - currentDirection.dy + gridHeight) % gridHeight
+                )
+            )
+        }
+        snake = newSnake
+
+        val now = System.currentTimeMillis()
+        invulnerabilityEndTime = now + 2000L
+        directionQueue.clear()
+        currentScreen = AppScreen.GAMEPLAY
+        triggerHaptic(HapticType.DOUBLE)
+        if (soundEffectsEnabled) audio.playButtonClick()
     }
 
     // ------------------------------------------
@@ -323,6 +377,14 @@ fun SnakeGameApp(isForeground: Boolean) {
     }
     DisposableEffect(Unit) {
         onDispose { audio.release() }
+    }
+
+    // Combo meter 3.5s timeout reset
+    LaunchedEffect(lastEatTime, comboCount) {
+        if (comboCount > 0) {
+            delay(3500L)
+            comboCount = 0
+        }
     }
 
     // Auto-pause when going to background
@@ -382,10 +444,12 @@ fun SnakeGameApp(isForeground: Boolean) {
     // ------------------------------------------
     // Main Game Tick Loop
     // ------------------------------------------
-    LaunchedEffect(currentScreen, currentDifficulty, speedBoostEndTime, portalWallsEnabled) {
+    LaunchedEffect(currentScreen, currentDifficulty, speedBoostEndTime, ghostEndTime, invulnerabilityEndTime, portalWallsEnabled) {
         while (isActive && currentScreen == AppScreen.GAMEPLAY) {
             val now = System.currentTimeMillis()
             val isBoosted = now < speedBoostEndTime
+            val isGhost = now < ghostEndTime
+            val isInvulnerable = now < invulnerabilityEndTime
 
             val speedDeduction = (score * currentDifficulty.speedStepMs)
             val computedDelay = (currentDifficulty.baseDelayMs - speedDeduction)
@@ -420,12 +484,16 @@ fun SnakeGameApp(isForeground: Boolean) {
 
             val nextHead = Point(nextX, nextY)
 
-            // Self or obstacle collision
-            if (nextHead in snake.dropLast(1) || nextHead in obstacles) {
-                currentScreen = AppScreen.GAME_OVER
-                triggerHaptic(HapticType.HEAVY)
-                if (soundEffectsEnabled) sfx.playCrash()
-                continue
+            // Self or obstacle collision:
+            // Ghost power-up or invulnerability allows passing through own body and stones
+            val canPassObstaclesAndBody = isGhost || isInvulnerable
+            if (!canPassObstaclesAndBody) {
+                if (nextHead in snake.dropLast(1) || nextHead in obstacles) {
+                    currentScreen = AppScreen.GAME_OVER
+                    triggerHaptic(HapticType.HEAVY)
+                    if (soundEffectsEnabled) sfx.playCrash()
+                    continue
+                }
             }
 
             // Check food expiry
@@ -441,18 +509,34 @@ fun SnakeGameApp(isForeground: Boolean) {
             if (hasEaten) {
                 newSnake.addAll(snake) // grow
 
-                val pts = currentFood.type.points
+                // Combo meter: eating again within 3.5 s raises combo (max x5)
+                if (now - lastEatTime <= 3500L && lastEatTime > 0L) {
+                    comboCount = (comboCount + 1).coerceAtMost(5)
+                } else {
+                    comboCount = 1
+                }
+                lastEatTime = now
+
+                // Score multiplier x2 at combo 3, x3 at combo 5
+                val multiplier = when {
+                    comboCount >= 5 -> 3
+                    comboCount >= 3 -> 2
+                    else -> 1
+                }
+
+                val pts = currentFood.type.points * multiplier
                 score += pts
                 if (score > highScore) {
                     highScore = score
                     prefs.edit { putInt("high_score", highScore) }
                 }
 
-                // Economy: earn coins by playing!
+                // Economy: +1 per apple, +5 per golden apple
                 val earnedCoins = when (currentFood.type) {
                     FoodType.NORMAL -> 1
                     FoodType.GOLDEN -> 5
-                    FoodType.SPEED_BOOST -> 2
+                    FoodType.SPEED_BOOST -> 1
+                    FoodType.GHOST -> 1
                 }
                 coins += earnedCoins
                 prefs.edit { putInt("coins", coins) }
@@ -461,12 +545,13 @@ fun SnakeGameApp(isForeground: Boolean) {
                     FoodType.NORMAL -> currentTheme.normalFood
                     FoodType.GOLDEN -> currentTheme.goldenFood
                     FoodType.SPEED_BOOST -> currentTheme.speedFood
+                    FoodType.GHOST -> currentTheme.ghostFood
                 }
 
                 spawnParticles(currentFood.position.x, currentFood.position.y, foodColor)
                 floatingTexts.add(
                     FloatingText(
-                        text = "+$pts",
+                        text = if (multiplier > 1) "+$pts (${multiplier}x)" else "+$pts",
                         gridX = currentFood.position.x,
                         gridY = currentFood.position.y,
                         color = foodColor
@@ -476,12 +561,6 @@ fun SnakeGameApp(isForeground: Boolean) {
                 when (currentFood.type) {
                     FoodType.NORMAL -> {
                         triggerHaptic(HapticType.LIGHT)
-                        if (now - lastEatTime < 2400L) {
-                            comboCount = (comboCount + 1).coerceAtMost(5)
-                        } else {
-                            comboCount = 0
-                        }
-                        lastEatTime = now
                         audio.playEat(comboCount)
                     }
                     FoodType.GOLDEN -> {
@@ -492,6 +571,11 @@ fun SnakeGameApp(isForeground: Boolean) {
                         speedBoostEndTime = now + currentFood.type.durationMs
                         triggerHaptic(HapticType.MEDIUM)
                         audio.playBoost()
+                    }
+                    FoodType.GHOST -> {
+                        ghostEndTime = now + currentFood.type.durationMs
+                        triggerHaptic(HapticType.MEDIUM)
+                        audio.playGhost()
                     }
                 }
 
@@ -561,6 +645,7 @@ fun SnakeGameApp(isForeground: Boolean) {
                     }
 
                     AppScreen.GAMEPLAY -> {
+                        val now = System.currentTimeMillis()
                         GameplayScreen(
                             currentTheme = currentTheme,
                             score = score,
@@ -571,7 +656,10 @@ fun SnakeGameApp(isForeground: Boolean) {
                             obstacles = obstacles,
                             particles = particles,
                             floatingTexts = floatingTexts,
-                            isSpeedBoosted = System.currentTimeMillis() < speedBoostEndTime,
+                            isSpeedBoosted = now < speedBoostEndTime,
+                            isGhostActive = now < ghostEndTime,
+                            isInvulnerable = now < invulnerabilityEndTime,
+                            comboCount = comboCount,
                             pulseScale = pulseScale,
                             frameTick = frameTick,
                             gridWidth = gridWidth,
@@ -609,6 +697,9 @@ fun SnakeGameApp(isForeground: Boolean) {
                         GameOverScreen(
                             finalScore = score,
                             highScore = highScore,
+                            coins = coins,
+                            canRevive = !hasRevivedThisRun,
+                            onRevive = { revivePlayer() },
                             onTryAgain = { startNewGame() },
                             onMainMenu = { currentScreen = AppScreen.MAIN_MENU }
                         )

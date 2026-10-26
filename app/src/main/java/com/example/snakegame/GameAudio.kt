@@ -99,6 +99,7 @@ class GameAudio(private val context: Context) {
     private var idBoost = 0
     private var idCrash = 0
     private var idClick = 0
+    private var idGhost = 0
     private var ready = false
     private var musicVolume = 0.5f
     private var boosted = false
@@ -166,6 +167,7 @@ class GameAudio(private val context: Context) {
         idBoost = loadWav(pool, "sfx_boost.wav", AudioSynth.boost())
         idCrash = loadWav(pool, "sfx_crash.wav", AudioSynth.crash())
         idClick = loadWav(pool, "sfx_click.wav", AudioSynth.click())
+        idGhost = loadWav(pool, "sfx_ghost.wav", AudioSynth.ghost())
         soundPool = pool
     }
 
@@ -269,6 +271,10 @@ class GameAudio(private val context: Context) {
 
     fun playClick() {
         play(idClick, 0.8f)
+    }
+
+    fun playGhost() {
+        play(idGhost, 1f)
     }
 
     // Compatibility aliases for previous SFX calls
@@ -582,6 +588,16 @@ private object AudioSynth {
         (sin(2.0 * PI * 1200.0 * t) * 0.6 + sin(2.0 * PI * 1800.0 * t) * 0.4) *
             min(1.0, t / 0.001) * exp(-t * 55.0) * 0.35
     }
+
+    /** Ethereal warble + eerie shimmer for ghost power-up. */
+    fun ghost(): ShortArray = render(0.55) { t ->
+        val freq = 580.0 + 140.0 * sin(2.0 * PI * 7.0 * t) // spooky vibrato glide
+        val env = min(1.0, t / 0.02) * exp(-t * 4.5)
+        val shimmer = sin(2.0 * PI * freq * t) * 0.35 +
+            sin(2.0 * PI * (freq * 1.5) * t) * 0.15 +
+            sin(2.0 * PI * (freq * 0.5) * t) * 0.20
+        shimmer * env
+    }
 }
 
 // ==========================================
@@ -603,4 +619,5 @@ class SoundEffectsPlayer(private val audio: GameAudio? = null) {
     fun playCrash() { audio?.playCrash() }
     fun playButtonClick() { audio?.playClick() }
     fun playCoin() { audio?.playGolden() }
+    fun playGhost() { audio?.playGhost() }
 }
