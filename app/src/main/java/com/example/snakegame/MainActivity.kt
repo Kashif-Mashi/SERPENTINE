@@ -122,7 +122,7 @@ fun SnakeGameApp(isForeground: Boolean) {
     var musicEnabled by remember { mutableStateOf(prefs.getBoolean("music_on", true)) }
     var soundEffectsEnabled by remember { mutableStateOf(prefs.getBoolean("sfx_on", true)) }
     var musicVolume by remember { mutableFloatStateOf(prefs.getFloat("music_volume", 0.6f)) }
-    var swipeSensitivity by remember { mutableFloatStateOf(prefs.getFloat("swipe_sensitivity", 0.65f)) }
+    var swipeSensitivity by remember { mutableFloatStateOf(prefs.getFloat("swipe_sensitivity", 0.85f)) }
     var darkModeEnabled by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
     var portalWallsEnabled by remember { mutableStateOf(prefs.getBoolean("portal_walls", false)) }
 
@@ -171,10 +171,34 @@ fun SnakeGameApp(isForeground: Boolean) {
     // Helper: Direction Input
     fun queueDirection(newDir: Direction) {
         if (currentScreen != AppScreen.GAMEPLAY) return
-        val lastDir = directionQueue.lastOrNull() ?: currentDirection
-        if (!newDir.isOpposite(lastDir) && newDir != lastDir) {
-            if (directionQueue.size < 2) {
+        if (directionQueue.isEmpty()) {
+            if (!newDir.isOpposite(currentDirection) && newDir != currentDirection) {
                 directionQueue.add(newDir)
+                triggerHaptic(HapticType.LIGHT)
+            }
+        } else if (directionQueue.size == 1) {
+            val pendingDir = directionQueue[0]
+            // Case A: User rapidly reverses their mind (e.g. flicked UP then immediately DOWN, or LEFT then RIGHT)
+            // If newDir is opposite to the pending direction, and not opposite to currentDirection, replace the pending turn
+            if (newDir.isOpposite(pendingDir)) {
+                if (!newDir.isOpposite(currentDirection) && newDir != currentDirection) {
+                    directionQueue[0] = newDir
+                    triggerHaptic(HapticType.LIGHT)
+                }
+            } else if (newDir == currentDirection) {
+                // User canceled pending turn by swiping in the direction snake is already moving
+                directionQueue.clear()
+                triggerHaptic(HapticType.LIGHT)
+            } else if (!newDir.isOpposite(pendingDir) && newDir != pendingDir) {
+                // Buffer second turn (e.g. quick cornering: right -> up -> left)
+                directionQueue.add(newDir)
+                triggerHaptic(HapticType.LIGHT)
+            }
+        } else if (directionQueue.size >= 2) {
+            val firstQueued = directionQueue[0]
+            // User made another rapid flick before tick; update the second buffered turn with freshest intent
+            if (!newDir.isOpposite(firstQueued) && newDir != firstQueued) {
+                directionQueue[1] = newDir
                 triggerHaptic(HapticType.LIGHT)
             }
         }
@@ -618,6 +642,7 @@ fun SnakeGameApp(isForeground: Boolean) {
                             selectedDifficulty = currentDifficulty,
                             darkModeEnabled = darkModeEnabled,
                             vibrationEnabled = vibrationEnabled,
+                            swipeSensitivity = swipeSensitivity,
                             onMusicToggle = {
                                 musicEnabled = it
                                 prefs.edit { putBoolean("music_on", it) }
@@ -647,6 +672,10 @@ fun SnakeGameApp(isForeground: Boolean) {
                                 vibrationEnabled = it
                                 prefs.edit { putBoolean("vibration", it) }
                                 if (it) performHaptic(context, HapticType.MEDIUM)
+                            },
+                            onSwipeSensitivityChange = {
+                                swipeSensitivity = it
+                                prefs.edit { putFloat("swipe_sensitivity", it) }
                             },
                             onBackClick = { currentScreen = previousScreen }
                         )

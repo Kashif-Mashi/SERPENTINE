@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.abs
 
 @Composable
 fun SettingsScreen(
@@ -34,6 +35,7 @@ fun SettingsScreen(
     selectedDifficulty: Difficulty,
     darkModeEnabled: Boolean,
     vibrationEnabled: Boolean,
+    swipeSensitivity: Float = 0.85f,
     onMusicToggle: (Boolean) -> Unit,
     onSoundEffectsToggle: (Boolean) -> Unit,
     onHapticsToggle: (Boolean) -> Unit,
@@ -41,6 +43,7 @@ fun SettingsScreen(
     onDifficultySelected: (Difficulty) -> Unit,
     onDarkModeToggle: (Boolean) -> Unit,
     onVibrationToggle: (Boolean) -> Unit,
+    onSwipeSensitivityChange: (Float) -> Unit = {},
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -237,7 +240,53 @@ fun SettingsScreen(
                     }
                 }
 
-                // Section 3: Display
+                // Section 3: Touch Sensitivity
+                SectionHeader(title = "Touch Sensitivity")
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val sensitivityOptions = listOf(
+                        Pair("Normal", 0.65f),
+                        Pair("Fast", 0.85f),
+                        Pair("Hyper", 0.98f)
+                    )
+                    sensitivityOptions.forEach { (label, value) ->
+                        val isSelected = abs(swipeSensitivity - value) < 0.08f
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .clickable { onSwipeSensitivityChange(value) }
+                                .shadow(if (isSelected) 3.dp else 1.dp, shape = CitrusShapes.Pill),
+                            shape = CitrusShapes.Pill,
+                            color = if (isSelected) CitrusColors.WarmGoldenYellow else CitrusColors.SoftCardBg,
+                            border = BorderStroke(
+                                1.2.dp,
+                                if (isSelected) CitrusColors.WarmGoldenDark else CitrusColors.SoftCardBorder
+                            )
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = label,
+                                    color = CitrusColors.DeepInk,
+                                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Text(
+                    text = "Controls speed and threshold for quick directional swipes (Left, Right, Up, Down).",
+                    color = palette.textSecondary,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+
+                // Section 4: Display
                 SectionHeader(title = "Display")
 
                 SerpentineCard {
@@ -284,7 +333,7 @@ fun SettingsScreen(
                     )
                 }
 
-                // Section 4: About
+                // Section 5: About
                 SectionHeader(title = "About")
 
                 SerpentineCard {

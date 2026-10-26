@@ -8,7 +8,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,12 +29,14 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import kotlin.math.abs
 
 @Composable
@@ -216,17 +219,93 @@ fun GameplayScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            val density = LocalDensity.current
+            // Ultra-fast zero-touch-slop swipe threshold in pixels
+            // swipeSensitivity ranges 0.1f (gentle) to 1.0f (hyper)
+            // At default 0.85f: (13.dp - 0.85 * 7.dp) ≈ 7.05.dp (only ~18-20px on high-DPI screens!)
+            val swipeThresholdPx = with(density) {
+                (13f - (swipeSensitivity.coerceIn(0.1f, 1f) * 7f)).dp.toPx()
+            }
+            val fastFlickPx = swipeThresholdPx * 0.70f
+
+            val swipeModifier = Modifier.pointerInput(swipeSensitivity, onDirectionChange) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var lastX = down.position.x
+                    var lastY = down.position.y
+                    var dragX = 0f
+                    var dragY = 0f
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+
+                        if (!change.pressed) {
+                            // Quick flick on finger lift
+                            val absX = abs(dragX)
+                            val absY = abs(dragY)
+                            if (absX >= fastFlickPx || absY >= fastFlickPx) {
+                                if (absX > absY) {
+                                    if (dragX > 0) onDirectionChange(Direction.RIGHT)
+                                    else onDirectionChange(Direction.LEFT)
+                                } else {
+                                    if (dragY > 0) onDirectionChange(Direction.DOWN)
+                                    else onDirectionChange(Direction.UP)
+                                }
+                            }
+                            break
+                        }
+
+                        val curX = change.position.x
+                        val curY = change.position.y
+                        val dx = curX - lastX
+                        val dy = curY - lastY
+                        lastX = curX
+                        lastY = curY
+
+                        // Instant Reversal Tracking:
+                        // When transitioning from left-to-right, right-to-left, top-to-bottom, bottom-to-top,
+                        // reset drag accumulation on direction reversal so there is no deadzone lag.
+                        if ((dx > 0 && dragX < 0) || (dx < 0 && dragX > 0)) {
+                            dragX = dx
+                        } else {
+                            dragX += dx
+                        }
+
+                        if ((dy > 0 && dragY < 0) || (dy < 0 && dragY > 0)) {
+                            dragY = dy
+                        } else {
+                            dragY += dy
+                        }
+
+                        val absX = abs(dragX)
+                        val absY = abs(dragY)
+
+                        if (absX >= swipeThresholdPx || absY >= swipeThresholdPx) {
+                            if (absX > absY) {
+                                if (dragX > 0) onDirectionChange(Direction.RIGHT)
+                                else onDirectionChange(Direction.LEFT)
+                            } else {
+                                if (dragY > 0) onDirectionChange(Direction.DOWN)
+                                else onDirectionChange(Direction.UP)
+                            }
+                            change.consume()
+                            dragX = 0f
+                            dragY = 0f
+                        }
+                    }
+                }
+            }
+
             // 2. Hardware-accelerated Canvas Snake Playfield
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 2.dp),
+                    .padding(horizontal = 2.dp)
+                    .then(swipeModifier),
                 contentAlignment = Alignment.Center
             ) {
-                var dragX by remember { mutableFloatStateOf(0f) }
-                var dragY by remember { mutableFloatStateOf(0f) }
-
                 val borderColor = if (portalWallsEnabled) {
                     CitrusColors.WarmGoldenYellow
                 } else {
@@ -243,31 +322,6 @@ fun GameplayScreen(
                             color = borderColor,
                             shape = RoundedCornerShape(26.dp)
                         )
-                        .pointerInput(Unit) {
-                            detectDragGestures(
-                                onDragStart = {
-                                    dragX = 0f
-                                    dragY = 0f
-                                },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    dragX += dragAmount.x
-                                    dragY += dragAmount.y
-                                    val threshold = 50f - (swipeSensitivity.coerceIn(0.1f, 1f) * 35f)
-                                    if (abs(dragX) > threshold || abs(dragY) > threshold) {
-                                        if (abs(dragX) > abs(dragY)) {
-                                            if (dragX > 0) onDirectionChange(Direction.RIGHT)
-                                            else onDirectionChange(Direction.LEFT)
-                                        } else {
-                                            if (dragY > 0) onDirectionChange(Direction.DOWN)
-                                            else onDirectionChange(Direction.UP)
-                                        }
-                                        dragX = 0f
-                                        dragY = 0f
-                                    }
-                                }
-                            )
-                        }
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         if (frameTick < 0L) return@Canvas
@@ -521,7 +575,8 @@ fun GameplayScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(4.dp, shape = CitrusShapes.CardMedium),
+                        .shadow(4.dp, shape = CitrusShapes.CardMedium)
+                        .then(swipeModifier),
                     shape = CitrusShapes.CardMedium,
                     color = effectiveSurface,
                     border = BorderStroke(1.5.dp, CitrusColors.DeepCobalt.copy(alpha = 0.4f))
@@ -561,7 +616,8 @@ fun GameplayScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(2.dp, shape = CitrusShapes.Pill),
+                        .shadow(2.dp, shape = CitrusShapes.Pill)
+                        .then(swipeModifier),
                     shape = CitrusShapes.Pill,
                     color = effectiveSurface.copy(alpha = 0.85f),
                     border = BorderStroke(1.dp, CitrusColors.SoftCardBorder)
